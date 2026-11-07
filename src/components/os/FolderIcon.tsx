@@ -45,7 +45,7 @@ export default function FolderIcon({ label, href, tint, file, lit, wiggle = 0, v
           lit ? '-translate-y-1 scale-105 outline-2 outline-offset-4 outline-[#7F77DD]' : ''
         }`}
       />
-      {label}
+      <span className="rounded-[5px] border-[1.5px] border-ink bg-win px-1.5 leading-relaxed">{label}</span>
     </a>
   );
 }
