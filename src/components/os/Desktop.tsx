@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import MenuBar from './MenuBar';
 import Window from './Window';
 import FolderIcon from './FolderIcon';
 import Dock from './Dock';
+import Intro from './Intro'; // new
 
 type WinId = 'welcome' | 'contact';
 type WinState = { open: boolean; z: number; nudge: number };
@@ -13,6 +15,7 @@ const WINDOWS: Record<WinId, { title: string; x: number; y: number; width: numbe
 };
 
 const EMAIL = 'sameendhanimisetti@gmail.com';
+const SEEN_KEY = 'sameen-os-booted'; // new
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
@@ -71,11 +74,35 @@ function Contact() {
 export default function Desktop() {
   const deskRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const reduceMotion = useReducedMotion(); // new
+  const [intro, setIntro] = useState(true); // new
+  const [ready, setReady] = useState(false); // new
   const [top, setTop] = useState(10);
   const [wins, setWins] = useState<Record<WinId, WinState>>({
     welcome: { open: true, z: 10, nudge: 0 },
     contact: { open: false, z: 0, nudge: 0 },
   });
+
+  // new: skip the intro for returning visitors or reduced motion
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem(SEEN_KEY) === '1';
+    } catch {}
+    if (seen || reduceMotion) {
+      setIntro(false);
+      setReady(true);
+    }
+  }, [reduceMotion]);
+
+  // new: called when the intro ends or is skipped
+  const finishIntro = useCallback(() => {
+    try {
+      sessionStorage.setItem(SEEN_KEY, '1');
+    } catch {}
+    setIntro(false);
+    setReady(true);
+  }, []);
 
   const focus = (id: WinId) => {
     const z = top + 1;
@@ -94,46 +121,57 @@ export default function Desktop() {
 
   const close = (id: WinId) => setWins((w) => ({ ...w, [id]: { ...w[id], open: false } }));
 
+  // new: staggered entrance for folders and dock
+  const rise = (delay: number) => ({
+    initial: { opacity: 0, y: 20 },
+    animate: ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 },
+    transition: { duration: 0.45, delay, ease: 'easeOut' as const },
+  });
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
+      {intro && <Intro onDone={finishIntro} />}
       <MenuBar />
       <div ref={deskRef} className="relative flex-1 overflow-hidden">
-        {(Object.keys(WINDOWS) as WinId[]).map(
-          (id) =>
-            wins[id].open && (
-              <Window
-                key={id}
-                {...WINDOWS[id]}
-                z={wins[id].z}
-                nudge={wins[id].nudge}
-                bounds={deskRef}
-                isMobile={isMobile}
-                onFocus={() => focus(id)}
-                onClose={() => close(id)}
-              >
-                {id === 'welcome' ? <Welcome /> : <Contact />}
-              </Window>
-            ),
-        )}
+        {ready &&
+          (Object.keys(WINDOWS) as WinId[]).map(
+            (id) =>
+              wins[id].open && (
+                <Window
+                  key={id}
+                  {...WINDOWS[id]}
+                  z={wins[id].z}
+                  nudge={wins[id].nudge}
+                  bounds={deskRef}
+                  isMobile={isMobile}
+                  onFocus={() => focus(id)}
+                  onClose={() => close(id)}
+                >
+                  {id === 'welcome' ? <Welcome /> : <Contact />}
+                </Window>
+              ),
+          )}
 
         <div className="absolute right-3 top-6 flex flex-col gap-5">
-          <FolderIcon label="projects/" href="/projects" tint="bg-mint" />
-          <FolderIcon label="internships/" href="/internships" tint="bg-sky" />
-          <FolderIcon label="hobbies/" href="/hobbies" tint="bg-blush" />
-          <FolderIcon label="resume.pdf" href="/resume.pdf" tint="bg-stone" file />
+          <motion.div {...rise(0.35)}><FolderIcon label="projects/" href="/projects" tint="bg-mint" /></motion.div>
+          <motion.div {...rise(0.46)}><FolderIcon label="internships/" href="/internships" tint="bg-sky" /></motion.div>
+          <motion.div {...rise(0.57)}><FolderIcon label="hobbies/" href="/hobbies" tint="bg-blush" /></motion.div>
+          <motion.div {...rise(0.68)}><FolderIcon label="resume.pdf" href="/resume.pdf" tint="bg-stone" file /></motion.div>
         </div>
 
         <div className="absolute bottom-3 left-1/2 z-[1000] -translate-x-1/2">
-          <Dock
-            items={[
-              { label: 'me', onClick: () => open('welcome') },
-              { label: '~/projects', href: '/projects' },
-              { label: '~/work', href: '/internships' },
-              { label: 'fun', href: '/hobbies' },
-              { label: 'cv', href: '/resume.pdf' },
-              { label: '@', onClick: () => open('contact'), primary: true },
-            ]}
-          />
+          <motion.div {...rise(0.5)}>
+            <Dock
+              items={[
+                { label: 'me', onClick: () => open('welcome') },
+                { label: '~/projects', href: '/projects' },
+                { label: '~/work', href: '/internships' },
+                { label: 'fun', href: '/hobbies' },
+                { label: 'cv', href: '/resume.pdf' },
+                { label: '@', onClick: () => open('contact'), primary: true },
+              ]}
+            />
+          </motion.div>
         </div>
       </div>
     </div>

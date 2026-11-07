@@ -54,3 +54,12 @@
     border-radius: 6px;
   }
 }
+
+.booted [data-intro] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-intro] {
+    display: none;
+  }
+}
