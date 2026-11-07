@@ -6,14 +6,15 @@ import FolderIcon from './FolderIcon';
 import Dock from './Dock';
 import Intro from './Intro';
 import Chat, { type FolderId } from './Chat';
+import Resume from './Resume';
 
-type WinId = 'welcome' | 'contact';
+type WinId = 'welcome' | 'contact' | 'resume';
 type WinState = { open: boolean; z: number; nudge: number };
 
-// centered chat on desktop; contact opens as a bottom sheet on phones
 const WINDOWS: Record<WinId, { title: string; x: string; y: string; width: number; sheet?: boolean }> = {
   welcome: { title: 'sameen.chat', x: 'calc(50% - 280px)', y: 'max(24px, 6vh)', width: 560 },
   contact: { title: 'contact.txt', x: 'calc(50% + 120px)', y: 'max(140px, 22vh)', width: 300, sheet: true },
+  resume: { title: 'resume.pdf — preview', x: 'calc(50% - 200px)', y: 'max(16px, 3vh)', width: 540 },
 };
 
 const FOLDER_ICONS: { id: FolderId; label: string; href: string; tint: string; file?: boolean }[] = [
@@ -69,13 +70,14 @@ function Contact() {
 export default function Desktop() {
   const deskRef = useRef<HTMLDivElement>(null);
   const decided = useRef(false);
+  const topZ = useRef(10);
   const isMobile = useIsMobile();
   const [intro, setIntro] = useState(true);
   const [ready, setReady] = useState(false);
-  const [top, setTop] = useState(10);
   const [wins, setWins] = useState<Record<WinId, WinState>>({
     welcome: { open: true, z: 10, nudge: 0 },
     contact: { open: false, z: 0, nudge: 0 },
+    resume: { open: false, z: 0, nudge: 0 },
   });
   const [lit, setLit] = useState<FolderId | null>(null);
   const [wiggles, setWiggles] = useState<Record<FolderId, number>>({
@@ -86,7 +88,6 @@ export default function Desktop() {
   });
   const wiggle = useCallback((id: FolderId) => setWiggles((w) => ({ ...w, [id]: w[id] + 1 })), []);
 
-  // decide once: replay (?intro=1), skip (already seen / reduced motion), or play
   useEffect(() => {
     if (decided.current) return;
     decided.current = true;
@@ -113,28 +114,38 @@ export default function Desktop() {
     setReady(true);
   }, []);
 
-  const focus = (id: WinId) => {
-    const z = top + 1;
-    setTop(z);
+  const focus = useCallback((id: WinId) => {
+    const z = ++topZ.current;
     setWins((w) => ({ ...w, [id]: { ...w[id], z } }));
-  };
+  }, []);
 
-  const open = (id: WinId) => {
-    const z = top + 1;
-    setTop(z);
+  const open = useCallback((id: WinId) => {
+    const z = ++topZ.current;
     setWins((w) => ({
       ...w,
       [id]: { open: true, z, nudge: w[id].open ? w[id].nudge + 1 : 0 },
     }));
-  };
+  }, []);
 
   const close = (id: WinId) => setWins((w) => ({ ...w, [id]: { ...w[id], open: false } }));
+
+  // phones get the PDF directly; desktops get the preview window
+  const openResume = useCallback(() => {
+    if (window.matchMedia('(max-width: 767px)').matches) window.location.href = '/resume.pdf';
+    else open('resume');
+  }, [open]);
 
   const rise = (delay: number) => ({
     initial: { opacity: 0, y: 20 },
     animate: ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 },
     transition: { duration: 0.45, delay, ease: 'easeOut' as const },
   });
+
+  const content = (id: WinId) => {
+    if (id === 'welcome') return <Chat onHighlight={setLit} onWiggle={wiggle} onOpenResume={openResume} />;
+    if (id === 'resume') return <Resume />;
+    return <Contact />;
+  };
 
   return (
     <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
@@ -158,12 +169,11 @@ export default function Desktop() {
                   onFocus={() => focus(id)}
                   onClose={() => close(id)}
                 >
-                  {id === 'welcome' ? <Chat onHighlight={setLit} onWiggle={wiggle} /> : <Contact />}
+                  {content(id)}
                 </Window>
               ),
           )}
 
-        {/* phones: a row of folders on top. desktop: a column on the right */}
         <div className="order-first grid grid-cols-4 justify-items-center gap-1 pt-2 md:absolute md:right-3 md:top-6 md:flex md:flex-col md:gap-5 md:pt-0">
           {FOLDER_ICONS.map((f, i) => (
             <motion.div key={f.id} {...rise(0.35 + i * 0.11)} className="w-full md:w-auto">
@@ -175,6 +185,7 @@ export default function Desktop() {
                 lit={lit === f.id}
                 wiggle={wiggles[f.id]}
                 vt={f.file ? undefined : `folder-${f.id}`}
+                onOpen={f.file && !isMobile ? () => open('resume') : undefined}
               />
             </motion.div>
           ))}
@@ -191,7 +202,7 @@ export default function Desktop() {
                 { label: '~/projects', short: 'proj', href: '/projects' },
                 { label: '~/work', short: 'work', href: '/internships' },
                 { label: 'fun', href: '/hobbies' },
-                { label: 'cv', href: '/resume.pdf' },
+                isMobile ? { label: 'cv', href: '/resume.pdf' } : { label: 'cv', onClick: () => open('resume') },
                 { label: '@', onClick: () => open('contact'), primary: true },
               ]}
             />

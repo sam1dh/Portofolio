@@ -7,6 +7,7 @@ export type FolderId = 'projects' | 'internships' | 'hobbies' | 'resume';
 type Props = {
   onHighlight: (id: FolderId | null) => void;
   onWiggle: (id: FolderId) => void;
+  onOpenResume: () => void;
 };
 
 type Msg = { id: number; from: 'bot' | 'me'; content?: ReactNode; typing?: boolean };
@@ -49,7 +50,7 @@ function FolderMap({ onHighlight }: { onHighlight: Props['onHighlight'] }) {
   );
 }
 
-export default function Chat({ onHighlight, onWiggle }: Props) {
+export default function Chat({ onHighlight, onWiggle, onOpenResume }: Props) {
   const reduce = useReducedMotion();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chipsOn, setChipsOn] = useState(false);
@@ -145,7 +146,15 @@ export default function Chat({ onHighlight, onWiggle }: Props) {
     },
     "i'm a recruiter": () =>
       bot(
-        "great timing. i graduate in 2027 and i'm open to SDE and AI engineering roles. my résumé is on the desktop, and @ in the dock reaches me.",
+        <>
+          great timing. i graduate in 2027 and i'm open to SDE and AI engineering roles.
+          <button
+            onClick={onOpenResume}
+            className="mt-2 block rounded-full border border-ink bg-ink px-3 py-1 font-mono text-[11px] text-win"
+          >
+            open my résumé →
+          </button>
+        </>,
         () => point('resume'),
       ),
     'what are you best at?': () =>

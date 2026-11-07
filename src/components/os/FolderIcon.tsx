@@ -9,9 +9,10 @@ type Props = {
   lit?: boolean;
   wiggle?: number;
   vt?: string;
+  onOpen?: () => void;
 };
 
-export default function FolderIcon({ label, href, tint, file, lit, wiggle = 0, vt }: Props) {
+export default function FolderIcon({ label, href, tint, file, lit, wiggle = 0, vt, onOpen }: Props) {
   const controls = useAnimationControls();
 
   useEffect(() => {
@@ -19,7 +20,16 @@ export default function FolderIcon({ label, href, tint, file, lit, wiggle = 0, v
   }, [wiggle, controls]);
 
   return (
-    <a href={href} className="group relative flex w-full flex-col items-center gap-1.5 font-mono text-[11px] md:w-21 md:text-xs">
+    <a
+  href={href}
+  onClick={(e) => {
+    if (onOpen) {
+      e.preventDefault();
+      onOpen();
+    }
+  }}
+  className="group relative flex w-full flex-col items-center gap-1.5 font-mono text-[11px] md:w-21 md:text-xs"
+>
       <span
         aria-hidden
         className={`pointer-events-none absolute -left-5 top-3 text-sm text-accent transition-opacity ${

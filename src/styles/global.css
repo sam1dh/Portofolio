@@ -152,6 +152,19 @@
   }
 }
 
+@layer components {
+  .tb {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid var(--color-ink);
+    border-radius: 7px;
+    background: var(--color-win);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+}
+
 /* hobby stickers */
 @layer components {
   .sticker {
