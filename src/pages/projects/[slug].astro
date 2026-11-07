@@ -1,0 +1,41 @@
+---
+import { getCollection, render } from 'astro:content';
+import Page from '../../layouts/Page.astro';
+import DetailPage from '../../components/DetailPage.astro';
+
+export async function getStaticPaths() {
+  const all = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+  return all.map((entry, i) => ({
+    params: { slug: entry.id },
+    props: { entry, i, total: all.length, prev: all[i - 1], next: all[i + 1] },
+  }));
+}
+
+const { entry, i, total, prev, next } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+---
+
+<Page title={d.title} path={`~ / projects / ${entry.id}`} back="/projects" description={d.tagline}>
+  <DetailPage
+    label={`project ${i + 1} of ${total}`}
+    icon={d.icon}
+    tint={d.tint}
+    title={d.title}
+    subtitle={d.tagline}
+    meta={[['year', d.year], ['type', d.type], ['my part', d.role]]}
+    badge={d.badge}
+    labels={['the problem', 'what i built', 'how it works', 'stack', 'result']}
+    intro={d.problem}
+    flow={d.flow}
+    stack={d.stack}
+    result={d.result}
+    live={d.live}
+    code={d.code}
+    cover={d.cover}
+    prev={prev && { href: `/projects/${prev.id}`, title: prev.data.title }}
+    next={next && { href: `/projects/${next.id}`, title: next.data.title }}
+  >
+    <Content />
+  </DetailPage>
+</Page>

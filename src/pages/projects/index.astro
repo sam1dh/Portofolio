@@ -1,0 +1,30 @@
+---
+import { getCollection } from 'astro:content';
+import Page from '../../layouts/Page.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+
+const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<Page title="Projects" path="~ / projects" back="/" description="Things Sameen has built.">
+  <div class="p-6 sm:p-8">
+    <p class="font-mono text-xs text-sub">{projects.length} items · click a card to open it</p>
+    <h1 class="mt-3 font-serif text-5xl leading-none">things i <em>built</em></h1>
+    <p class="mt-2.5 text-[15px] text-sub">Side projects and hackathon builds, each with the full story inside.</p>
+    <div class="mt-8 grid gap-5 sm:grid-cols-2">
+      {projects.map((p, i) => (
+        <ProjectCard
+          href={`/projects/${p.id}`}
+          icon={p.data.icon}
+          title={p.data.title}
+          subtitle={p.data.tagline}
+          year={p.data.year}
+          tags={p.data.stack}
+          tint={p.data.tint}
+          badge={p.data.badge}
+          index={i}
+        />
+      ))}
+    </div>
+  </div>
+</Page>

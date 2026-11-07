@@ -1,0 +1,117 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import { TINTS, type Tint } from '../lib/tints';
+import LivePreview from './LivePreview.astro';
+
+interface Link {
+  href: string;
+  title: string;
+}
+
+interface Props {
+  label: string;
+  icon: string;
+  tint: Tint;
+  title: string;
+  subtitle: string;
+  meta: [string, string][];
+  badge?: string;
+  labels: string[];
+  intro: string;
+  flow: string[];
+  stack: string[];
+  result: string;
+  live?: string;
+  code?: string;
+  cover?: ImageMetadata;
+  prev?: Link;
+  next?: Link;
+}
+
+const p = Astro.props;
+const t = TINTS[p.tint];
+---
+
+<article class="p-6 sm:p-8">
+  <p class="font-mono text-xs text-sub">{p.label}</p>
+
+  <header class="mt-4 flex items-center gap-4">
+    <span class={`grid h-14 w-16 shrink-0 place-items-center rounded-win border border-ink font-mono text-lg font-medium ${t.bg} ${t.ink}`}>{p.icon}</span>
+    <div>
+      <h1 class="font-serif text-[40px] leading-none sm:text-[46px]">{p.title}</h1>
+      <p class="mt-1.5 text-[15px] text-sub">{p.subtitle}</p>
+    </div>
+  </header>
+
+  <dl class="mt-6 grid gap-3 border-y border-ink py-3.5 sm:grid-cols-3">
+    {p.meta.map(([k, v]) => (
+      <div>
+        <dt class="font-mono text-xs text-sub">{k}</dt>
+        <dd class="text-sm">{v}</dd>
+      </div>
+    ))}
+  </dl>
+
+  {p.badge && (
+    <p class="mt-4 inline-block rounded-full border border-ink bg-sticky px-3 py-1 font-mono text-xs text-[#412402]">✦ {p.badge}</p>
+  )}
+
+  <section class="section">
+    <h2 class="section-title">01 — {p.labels[0]}</h2>
+    <p class="text-sm leading-relaxed">{p.intro}</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">02 — {p.labels[1]}</h2>
+    <div class="prose-os"><slot /></div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">03 — {p.labels[2]}</h2>
+    <div class="flex flex-wrap items-center gap-2">
+      {p.flow.map((f, i) => (
+        <Fragment>
+          {i > 0 && <span class="text-sub" aria-hidden="true">→</span>}
+          <span class={`rounded-lg border border-ink px-3 py-1.5 font-mono text-xs ${t.bg} ${t.ink}`}>{f}</span>
+        </Fragment>
+      ))}
+    </div>
+  </section>
+
+  <div class="grid gap-x-3 sm:grid-cols-2">
+    <section class="section">
+      <h2 class="section-title">04 — {p.labels[3]}</h2>
+      <div class="flex flex-wrap gap-1.5">{p.stack.map((s) => <span class="pill">{s}</span>)}</div>
+    </section>
+    <section class="section">
+      <h2 class="section-title">05 — {p.labels[4]}</h2>
+      <p class="text-sm leading-relaxed">{p.result}</p>
+    </section>
+  </div>
+
+  {(p.cover || p.live) && (
+    <section class="section">
+      <h2 class="section-title">see it</h2>
+      {p.cover ? (
+        <Image src={p.cover} alt={`${p.title} screenshot`} widths={[640, 1024]} sizes="(max-width: 768px) 100vw, 720px" class="w-full rounded-win border border-ink" />
+      ) : (
+        <LivePreview url={p.live!} title={p.title} />
+      )}
+    </section>
+  )}
+
+  {(p.live || p.code) && (
+    <div class="mt-4 flex flex-wrap gap-2">
+      {p.live && <a class="btn" href={p.live} target="_blank" rel="noopener noreferrer">live demo ↗</a>}
+      {p.code && <a class="btn" href={p.code} target="_blank" rel="noopener noreferrer">view code ↗</a>}
+    </div>
+  )}
+
+  {(p.prev || p.next) && (
+    <nav class="mt-6 flex justify-between gap-3 border-t border-ink pt-4">
+      {p.prev ? <a class="btn" href={p.prev.href}>← {p.prev.title}</a> : <span />}
+      {p.next && <a class="btn" href={p.next.href}>{p.next.title} →</a>}
+    </nav>
+  )}
+</article>

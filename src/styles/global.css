@@ -82,3 +82,52 @@
 @media (prefers-reduced-motion: reduce) {
   .eye, .typing-dot, .nudge { animation: none; }
 }
+
+@layer components {
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--color-ink);
+    background: var(--color-menu);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 9px 13px;
+    border: 1px solid var(--color-ink);
+    border-radius: 8px;
+    background: var(--color-menu);
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--color-titlebar); }
+  .section {
+    margin-top: 12px;
+    padding: 16px 20px;
+    border: 1px solid var(--color-ink);
+    border-radius: 10px;
+    background: var(--color-win);
+  }
+  .section-title {
+    margin-bottom: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-accent);
+  }
+  .prose-os ul { list-style: disc; padding-left: 1.25rem; }
+  .prose-os li { margin: 0.3rem 0; font-size: 14px; line-height: 1.7; }
+  .prose-os strong { font-weight: 500; }
+}
+
+@keyframes rise { from { opacity: 0; translate: 0 22px; } }
+@keyframes page-in { from { opacity: 0; scale: 0.97; } }
+.rise { animation: rise 0.5s ease backwards; }
+.page-in { animation: page-in 0.35s ease backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .page-in { animation: none; }
+}
