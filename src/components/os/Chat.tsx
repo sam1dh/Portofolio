@@ -140,6 +140,18 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, hin
         <span className="ml-auto text-[#0F6E56]">● online</span>
       </div>
 
+      <div className="flex items-center gap-2.5 border-b border-dashed border-[#AFA9EC] px-4 py-2">
+        <span className="relative size-8 shrink-0 rounded-full border border-ink bg-sticky" aria-hidden="true">
+          <span className="absolute left-[8px] top-[11px] h-2 w-1 rounded-full bg-ink" />
+          <span className="absolute right-[8px] top-[11px] h-2 w-1 rounded-full bg-ink" />
+        </span>
+        <span className="leading-tight">
+          <span className="text-sm font-medium">sameen</span>
+          <br />
+          <span className="font-mono text-[11px] text-sub">replies instantly · pune</span>
+        </span>
+      </div>
+
       <div ref={scroller} aria-live="polite" className="flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-3">
         <div className="mt-auto" />
         {msgs.map((m) => (

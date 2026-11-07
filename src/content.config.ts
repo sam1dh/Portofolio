@@ -24,6 +24,8 @@ const projects = defineCollection({
       live: z.string().url().optional(),
       code: z.string().url().optional(),
       cover: image().optional(),
+      stat: z.string().optional(),
+      statLabel: z.string().optional(),
     }),
 });
 
@@ -42,6 +44,8 @@ const internships = defineCollection({
     flow: z.array(z.string()),
     tools: z.array(z.string()),
     shipped: z.string(),
+    stat: z.string().optional(),
+    statLabel: z.string().optional(),
   }),
 });
 

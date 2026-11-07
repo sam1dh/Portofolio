@@ -1,34 +1,11 @@
 ---
-import { getCollection } from 'astro:content';
-import Page from '../../layouts/Page.astro';
-import ProjectCard from '../../components/ProjectCard.astro';
+import Base from '../../layouts/Base.astro';
+import Desktop from '../../components/os/Desktop';
+import { getFolders } from '../../lib/folders';
 
-const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+const folders = await getFolders();
 ---
 
-<Page title="Projects" path="~ / projects" back="/" description="Things Sameen has built.">
-  <div class="p-6 sm:p-8">
-    <p class="font-mono text-xs text-sub">{projects.length} items · click a card to open it</p>
-    <div class="mt-3 flex items-center gap-4">
-      <span class="folder shrink-0 bg-mint" style="view-transition-name: folder-projects"></span>
-      <h1 class="mt-3 font-serif text-4xl leading-none sm:text-5xl">things i <em>built</em></h1>
-    </div>
-    <p class="mt-2.5 text-[15px] text-sub">Side projects and hackathon builds, each with the full story inside.</p>
-    <div class="mt-8 grid gap-5 sm:grid-cols-2">
-      {projects.map((p, i) => (
-        <ProjectCard
-          href={`/projects/${p.id}`}
-          icon={p.data.icon}
-          title={p.data.title}
-          subtitle={p.data.tagline}
-          year={p.data.year}
-          tags={p.data.stack}
-          tint={p.data.tint}
-          badge={p.data.badge}
-          index={i}
-          vt={`icon-${p.id}`}
-        />
-      ))}
-    </div>
-  </div>
-</Page>
+<Base title="Projects · sameen.os" description="Things Sameen has built.">
+  <Desktop client:load folders={folders} initial={{ folder: 'projects' }} />
+</Base>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 
 const W = 1280; // design width
 const H = 800; // design height
-const FLOOR_H = 138; // from the underside of the desk to the bottom
+const PANEL_H = 138; // desk front, from under the desk top to the bottom of the screen
 const INK = '#1E1A3A';
 const line = 'border-[1.5px] border-ink';
 
@@ -10,7 +10,6 @@ type Props = {
   night: boolean;
   onLamp: () => void;
   screen: ReactNode;
-  folders: ReactNode;
 };
 
 const box = (left: number, top: number, width: number, height: number, extra: CSSProperties = {}): CSSProperties => ({
@@ -22,11 +21,15 @@ const box = (left: number, top: number, width: number, height: number, extra: CS
   ...extra,
 });
 
+// one symmetric curve: x maps straight to t, so every bulb hangs exactly on the wire
+const WIRE_END = 880;
+const WIRE_Y = 14;
+const WIRE_SAG = 110;
 const BULB_COLORS = ['#FAC775', '#ED93B1', '#5DCAA5', '#85B7EB', '#F0997B'];
 const BULBS = Array.from({ length: 13 }, (_, i) => {
   const x = 30 + i * 68;
-  const t = x / 880;
-  const y = (1 - t) ** 2 * 12 + 2 * (1 - t) * t * (t < 0.5 ? 80 : 28) + t * t * 20;
+  const t = x / WIRE_END;
+  const y = (1 - t) ** 2 * WIRE_Y + 2 * (1 - t) * t * WIRE_SAG + t ** 2 * WIRE_Y;
   return { x, y, c: BULB_COLORS[i % BULB_COLORS.length] };
 });
 
@@ -44,7 +47,6 @@ const STARS = [
   [70, 124],
 ];
 
-// the room lives in Pune, so its clock and sky follow Pune time
 function puneTime() {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Kolkata',
@@ -68,12 +70,11 @@ function Stage({ s, front, children }: { s: number; front?: boolean; children: R
   );
 }
 
-export default function DeskScene({ night, onLamp, screen, folders }: Props) {
+export default function DeskScene({ night, onLamp, screen }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [s, setS] = useState(0);
   const [time, setTime] = useState<{ h: number; m: number } | null>(null);
 
-  // scale the room to fit the screen
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -110,14 +111,13 @@ export default function DeskScene({ night, onLamp, screen, folders }: Props) {
         backgroundSize: '18px 18px',
       }}
     >
-      {/* floor and desk top stretch the full width */}
-      <div className="absolute inset-x-0 bottom-0 border-t-[1.5px] border-ink bg-[#AFA9EC]" style={{ height: FLOOR_H * s }} />
-      <div className="absolute inset-x-0 border-y-[1.5px] border-ink bg-peach" style={{ bottom: FLOOR_H * s, height: 22 * s }} />
+      {/* desk front and desk top stretch the full width */}
+      <div className="absolute inset-x-0 bottom-0 border-t-[1.5px] border-ink bg-[#F3E1C7]" style={{ height: PANEL_H * s }} />
+      <div className="absolute inset-x-0 border-y-[1.5px] border-ink bg-peach" style={{ bottom: PANEL_H * s, height: 22 * s }} />
 
-      {/* back: the room */}
       <Stage s={s}>
-        <svg style={box(0, 0, 880, 120)} viewBox="0 0 880 120" aria-hidden="true">
-          <path d="M0 12 Q221 80 440 28 T880 20" fill="none" stroke={INK} strokeWidth="1.5" />
+        <svg style={box(0, 0, 880, 140)} viewBox="0 0 880 140" aria-hidden="true">
+          <path d={`M0 ${WIRE_Y} Q440 ${WIRE_SAG} ${WIRE_END} ${WIRE_Y}`} fill="none" stroke={INK} strokeWidth="1.5" />
           {BULBS.map((b) => (
             <g key={b.x}>
               <line x1={b.x} y1={b.y} x2={b.x} y2={b.y + 8} stroke={INK} strokeWidth="1.5" />
@@ -127,35 +127,35 @@ export default function DeskScene({ night, onLamp, screen, folders }: Props) {
         </svg>
 
         {/* window */}
-        <div className={`${line} overflow-hidden rounded-lg transition-colors duration-500`} style={box(50, 82, 210, 172, { background: sky })} aria-hidden="true">
+        <div className={`${line} overflow-hidden rounded-lg transition-colors duration-500`} style={box(50, 92, 210, 172, { background: sky })} aria-hidden="true">
           <span className={`${line} absolute right-5 top-[18px] size-9 rounded-full bg-sticky transition-opacity`} style={{ opacity: showSun ? 1 : 0 }} />
           <span className={`${line} absolute left-5 top-[76px] h-6 w-[74px] rounded-full bg-white transition-opacity`} style={{ opacity: showSun ? 1 : 0 }} />
           {!showSun && STARS.map(([x, y]) => <span key={x} className="absolute size-1 rounded-full bg-white" style={{ left: x, top: y }} />)}
           <span className="absolute inset-y-0 left-1/2 w-[1.5px] bg-ink" />
           <span className="absolute inset-x-0 top-1/2 h-[1.5px] bg-ink" />
         </div>
-        <div className="bg-ink" style={box(20, 70, 268, 5)} />
-        <div className={`${line} bg-[#F4C0D1]`} style={box(22, 76, 42, 208, { borderRadius: '3px 3px 18px 6px' })} />
-        <div className={`${line} bg-[#F4C0D1]`} style={box(246, 76, 42, 208, { borderRadius: '3px 3px 6px 18px' })} />
+        <div className="bg-ink" style={box(20, 80, 268, 5)} />
+        <div className={`${line} bg-[#F4C0D1]`} style={box(22, 86, 42, 208, { borderRadius: '3px 3px 18px 6px' })} />
+        <div className={`${line} bg-[#F4C0D1]`} style={box(246, 86, 42, 208, { borderRadius: '3px 3px 6px 18px' })} />
 
         {/* shelf */}
         {BOOKS.map((b) => (
           <div
             key={b.l}
             className={`${line} border-b-0`}
-            style={box(b.l, b.t, b.w, b.h, { background: b.c, borderRadius: '3px 3px 0 0', rotate: `${b.r}deg`, transformOrigin: 'bottom left' })}
+            style={box(b.l, b.t + 10, b.w, b.h, { background: b.c, borderRadius: '3px 3px 0 0', rotate: `${b.r}deg`, transformOrigin: 'bottom left' })}
           />
         ))}
-        <div style={box(200, 304, 48, 76)} aria-hidden="true">
+        <div style={box(200, 314, 48, 76)} aria-hidden="true">
           <span className={`${line} bg-[#97C459]`} style={box(4, 8, 14, 26, { borderRadius: '14px 14px 3px 3px', rotate: '-20deg' })} />
           <span className={`${line} bg-[#639922]`} style={box(17, 0, 14, 34, { borderRadius: '14px 14px 3px 3px' })} />
           <span className={`${line} bg-[#97C459]`} style={box(30, 10, 14, 24, { borderRadius: '14px 14px 3px 3px', rotate: '22deg' })} />
           <span className={`${line} bg-[#F0997B]`} style={box(0, 34, 48, 42, { borderRadius: '3px 3px 10px 10px' })} />
         </div>
-        <div className={`${line} bg-peach`} style={box(26, 380, 244, 12, { borderRadius: 3 })} />
+        <div className={`${line} bg-peach`} style={box(26, 390, 244, 12, { borderRadius: 3 })} />
 
         {/* clock */}
-        <svg style={box(850, 24, 90, 90)} viewBox="0 0 58 58" aria-hidden="true">
+        <svg style={box(850, 40, 90, 90)} viewBox="0 0 58 58" aria-hidden="true">
           <circle cx="29" cy="29" r="27" fill="#FCFBFF" stroke={INK} strokeWidth="1.8" />
           <circle cx="29" cy="29" r="22" fill="none" stroke="#CECBF6" strokeWidth="3" />
           <line x1="29" y1="29" x2="29" y2="16" stroke={INK} strokeWidth="3" strokeLinecap="round" transform={`rotate(${(h % 12) * 30 + m * 0.5} 29 29)`} />
@@ -163,12 +163,14 @@ export default function DeskScene({ night, onLamp, screen, folders }: Props) {
           <circle cx="29" cy="29" r="2.5" fill={INK} />
         </svg>
 
-        {/* desk legs and rug */}
-        <div className={`${line} border-t-0 bg-peach`} style={box(60, 662, 20, 138)} />
-        <div className={`${line} border-t-0 bg-peach`} style={box(1200, 662, 20, 138)} />
-        <div className={`${line} bg-[#F4C0D1]`} style={box(300, 740, 680, 60, { borderRadius: '50% 50% 0 0 / 40% 40% 0 0' })} />
+        {/* desk drawers (the dock sits between them) */}
+        {[40, 860].map((x) => (
+          <div key={x} className={`${line} rounded-lg bg-peach`} style={box(x, 684, 380, 74)} aria-hidden="true">
+            <span className={`${line} absolute left-1/2 top-1/2 h-3 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-win`} />
+          </div>
+        ))}
 
-        {/* lamp: click it for night mode */}
+        {/* lamp: click for night mode */}
         <button
           type="button"
           onClick={onLamp}
@@ -203,12 +205,10 @@ export default function DeskScene({ night, onLamp, screen, folders }: Props) {
         </div>
       </Stage>
 
-      {/* night dims the room, not the PC or folders */}
       <div className="pointer-events-none absolute inset-0 bg-[rgb(30_26_58/0.45)] transition-opacity duration-500" style={{ opacity: night ? 1 : 0 }} />
 
-      {/* front: glow, the PC and the folders */}
       <Stage s={s} front>
-        <svg style={box(0, 0, 880, 120)} viewBox="0 0 880 120" aria-hidden="true">
+        <svg style={box(0, 0, 880, 140)} viewBox="0 0 880 140" aria-hidden="true">
           {BULBS.map((b) => (
             <circle key={b.x} cx={b.x} cy={b.y + 17} r="16" fill={b.c} style={{ opacity: night ? 0.55 : 0, transition: 'opacity 0.5s' }} />
           ))}
@@ -221,18 +221,13 @@ export default function DeskScene({ night, onLamp, screen, folders }: Props) {
             opacity: night ? 1 : 0,
           })}
         />
-
-        {/* the PC: 398 screen + 56 neck + 20 foot = sits exactly on the desk */}
+        {/* the PC: 398 screen + 56 neck + 20 foot = rests exactly on the desk */}
         <div className="pointer-events-auto" style={box(300, 166, 680, 474)}>
           <div className={`${line} h-[398px] rounded-[20px] bg-win p-[18px]`}>
             <div className={`${line} h-full overflow-hidden rounded-lg bg-win`}>{screen}</div>
           </div>
           <div className="mx-auto h-14 w-14 border-x-[1.5px] border-ink bg-win" />
           <div className={`${line} mx-auto h-5 w-[200px] rounded-t-md bg-win`} />
-        </div>
-
-        <div className="pointer-events-auto absolute right-6 top-8 flex origin-top-right scale-[1.35] flex-col items-center gap-6">
-          {folders}
         </div>
       </Stage>
     </div>

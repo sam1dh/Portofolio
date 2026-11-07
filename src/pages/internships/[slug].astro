@@ -1,38 +1,22 @@
 ---
-import { getCollection, render } from 'astro:content';
-import Page from '../../layouts/Page.astro';
-import DetailPage from '../../components/DetailPage.astro';
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Desktop from '../../components/os/Desktop';
+import { getFolders } from '../../lib/folders';
 
 export async function getStaticPaths() {
-  const all = (await getCollection('internships')).sort((a, b) => a.data.order - b.data.order);
-  return all.map((entry, i) => ({
-    params: { slug: entry.id },
-    props: { entry, i, total: all.length, prev: all[i - 1], next: all[i + 1] },
+  const all = await getCollection('internships');
+  return all.map((w) => ({
+    params: { slug: w.id },
+    props: { title: w.data.company, description: `${w.data.role} at ${w.data.company}` },
   }));
 }
 
-const { entry, i, total, prev, next } = Astro.props;
-const { Content } = await render(entry);
-const d = entry.data;
+const { slug } = Astro.params;
+const { title, description } = Astro.props;
+const folders = await getFolders();
 ---
 
-<Page title={d.company} path={`~ / internships / ${entry.id}`} back="/internships" description={`${d.role} at ${d.company}`}>
-  <DetailPage
-    label={`internship ${i + 1} of ${total}`}
-    icon={d.icon}
-    tint={d.tint}
-    title={d.company}
-    subtitle={`${d.role} · ${d.summary}`}
-    meta={[['when', d.dates], ['where', d.where], ['role', d.role]]}
-    labels={['the context', 'what i did', 'how it fits together', 'tools i used', 'what shipped']}
-    intro={d.context}
-    flow={d.flow}
-    stack={d.tools}
-    result={d.shipped}
-    vt={`icon-${entry.id}`}
-    prev={prev && { href: `/internships/${prev.id}`, title: prev.data.company }}
-    next={next && { href: `/internships/${next.id}`, title: next.data.company }}
-  >
-    <Content />
-  </DetailPage>
-</Page>
+<Base title={`${title} · sameen.os`} description={description}>
+  <Desktop client:load folders={folders} initial={{ folder: 'internships', item: slug }} />
+</Base>

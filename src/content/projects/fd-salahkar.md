@@ -8,6 +8,8 @@ role: Retrieval pipeline + advisor features
 order: 1
 tint: mint
 badge: 3rd of 650+ teams
+stat: "3rd"
+statLabel: of 650+ teams
 problem: >-
   Fixed deposits sound simple, but comparing rates, tenures and maturity amounts
   gets confusing fast, especially when the information isn't in your own language.
