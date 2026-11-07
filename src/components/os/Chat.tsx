@@ -49,8 +49,11 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onS
       if (!alive.current) return;
       const id = nextId.current++;
       if (fast.current) {
+        speak.current?.(true);
         setMsgs((m) => [...m, { id, from: 'bot', content }]);
         after?.();
+        // even on instant replay, let the room's waveform react briefly
+        setTimeout(() => speak.current?.(false), 900);
         return;
       }
       speak.current?.(true);
