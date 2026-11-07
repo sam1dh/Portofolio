@@ -27,6 +27,7 @@ interface Props {
   cover?: ImageMetadata;
   prev?: Link;
   next?: Link;
+  vt: string;
 }
 
 const p = Astro.props;
@@ -37,7 +38,10 @@ const t = TINTS[p.tint];
   <p class="font-mono text-xs text-sub">{p.label}</p>
 
   <header class="mt-4 flex items-center gap-4">
-    <span class={`grid h-14 w-16 shrink-0 place-items-center rounded-win border border-ink font-mono text-lg font-medium ${t.bg} ${t.ink}`}>{p.icon}</span>
+    <span
+      class={`grid h-14 w-16 shrink-0 place-items-center rounded-win border border-ink font-mono text-lg font-medium ${t.bg} ${t.ink}`}
+      style={`view-transition-name: ${p.vt}`}
+    >{p.icon}</span>
     <div>
       <h1 class="font-serif text-[40px] leading-none sm:text-[46px]">{p.title}</h1>
       <p class="mt-1.5 text-[15px] text-sub">{p.subtitle}</p>

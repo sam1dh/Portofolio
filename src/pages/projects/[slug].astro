@@ -33,6 +33,7 @@ const d = entry.data;
     live={d.live}
     code={d.code}
     cover={d.cover}
+    vt={`icon-${entry.id}`}
     prev={prev && { href: `/projects/${prev.id}`, title: prev.data.title }}
     next={next && { href: `/projects/${next.id}`, title: next.data.title }}
   >

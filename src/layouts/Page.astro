@@ -28,7 +28,7 @@ const { title, path, back, description } = Astro.props;
         <slot />
       </div>
     </main>
-    <div class="sticky bottom-3 flex justify-center pb-3">
+    <div class="sticky bottom-3 flex justify-center pb-3" style="view-transition-name: dock">
       <Dock
         items={[
           { label: 'me', href: '/' },

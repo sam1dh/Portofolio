@@ -131,3 +131,46 @@
 @media (prefers-reduced-motion: reduce) {
   .rise, .page-in { animation: none; }
 }
+
+/* smooth transitions between pages */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-group(*) {
+  animation-duration: 0.35s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* the browser animates pages now, so skip our own page pop where supported */
+@supports (view-transition-name: none) {
+  .page-in { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* hobby stickers */
+@layer components {
+  .sticker {
+    position: relative;
+    padding: 26px 18px 18px;
+    border: 1px solid var(--color-ink);
+    border-radius: 6px;
+    transition: rotate 0.2s, scale 0.2s;
+  }
+  .sticker:hover { rotate: 0deg; scale: 1.03; }
+  .tape {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    width: 62px;
+    height: 18px;
+    translate: -50% 0;
+    rotate: -3deg;
+    background: rgb(255 255 255 / 0.6);
+    border: 1px solid rgb(30 26 58 / 0.2);
+  }
+}

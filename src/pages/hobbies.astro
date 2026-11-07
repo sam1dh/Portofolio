@@ -1,0 +1,70 @@
+---
+import Page from '../layouts/Page.astro';
+
+// to add a hobby, copy one block and change the text, colors and tilt
+const hobbies = [
+  {
+    glyph: '“ ”',
+    title: 'debate',
+    text: 'Winner of my college debate competition. Give me a topic and a side.',
+    bg: 'bg-[#EEEDFE]',
+    ink: 'text-[#3C3489]',
+    tilt: '-rotate-3',
+  },
+  {
+    glyph: '( ◉ )',
+    title: 'public speaking',
+    text: "1st prize at the university public speaking competition. A mic doesn't scare me.",
+    bg: 'bg-blush',
+    ink: 'text-[#72243E]',
+    tilt: 'rotate-[2.5deg]',
+  },
+  {
+    glyph: '{ }',
+    title: 'hackathons',
+    text: 'SIH internal round winner, SanDisk finalist, and 3rd of 650+ teams at Blostem.',
+    bg: 'bg-mint',
+    ink: 'text-[#085041]',
+    tilt: '-rotate-[1.5deg]',
+  },
+];
+
+const stats = [
+  ['2', 'speaking titles'],
+  ['650+', 'teams at my best hackathon'],
+  ['3', 'internships before final year'],
+];
+---
+
+<Page title="Hobbies" path="~ / hobbies" back="/" description="What Sameen does when not coding.">
+  <div class="p-6 sm:p-8">
+    <p class="font-mono text-xs text-sub">off the clock</p>
+    <div class="mt-3 flex items-center gap-4">
+      <span class="folder shrink-0 bg-blush" style="view-transition-name: folder-hobbies"></span>
+      <h1 class="font-serif text-5xl leading-none">
+        things i love <em>besides code</em> <span class="text-[#EF9F27]">✦</span>
+      </h1>
+    </div>
+    <p class="mt-2.5 text-[15px] text-sub">When I'm not shipping, I'm usually talking. Competitively.</p>
+
+    <div class="mt-10 grid gap-x-5 gap-y-8 sm:grid-cols-3">
+      {hobbies.map((h, i) => (
+        <div class={`sticker rise ${h.bg} ${h.tilt}`} style={`animation-delay:${i * 110}ms`}>
+          <span class="tape" aria-hidden="true"></span>
+          <p class={`font-serif text-4xl leading-none ${h.ink}`} aria-hidden="true">{h.glyph}</p>
+          <h2 class={`mt-3 text-[15px] font-medium ${h.ink}`}>{h.title}</h2>
+          <p class={`mt-1.5 text-[13px] leading-relaxed ${h.ink}`}>{h.text}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="mt-10 grid gap-2.5 sm:grid-cols-3">
+      {stats.map(([n, label], i) => (
+        <div class="rise rounded-win border border-ink bg-menu px-4 py-3.5" style={`animation-delay:${400 + i * 90}ms`}>
+          <p class="font-serif text-[34px] leading-none text-accent">{n}</p>
+          <p class="mt-1.5 font-mono text-xs text-sub">{label}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</Page>

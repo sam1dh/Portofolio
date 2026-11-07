@@ -29,6 +29,7 @@ const d = entry.data;
     flow={d.flow}
     stack={d.tools}
     result={d.shipped}
+    vt={`icon-${entry.id}`}
     prev={prev && { href: `/internships/${prev.id}`, title: prev.data.company }}
     next={next && { href: `/internships/${next.id}`, title: next.data.company }}
   >

@@ -15,7 +15,10 @@ export default function MenuBar() {
   }, []);
 
   return (
-    <header className="flex items-center justify-between border-b border-ink bg-menu px-4 py-2 font-mono text-xs">
+    <header
+  style={{ viewTransitionName: 'menubar' }}
+  className="flex items-center justify-between border-b border-ink bg-menu px-4 py-2 font-mono text-xs"
+>
       <nav className="flex gap-4">
         <a href="/" className="font-medium">sameen.os</a>
         <span>file</span>

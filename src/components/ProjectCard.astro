@@ -11,9 +11,10 @@ interface Props {
   tint: Tint;
   badge?: string;
   index: number;
+  vt: string;
 }
 
-const { href, icon, title, subtitle, year, tags, tint, badge, index } = Astro.props;
+const { href, icon, title, subtitle, year, tags, tint, badge, index, vt } = Astro.props;
 const t = TINTS[tint];
 const tilt = ['-rotate-[1.5deg]', 'rotate-[1.2deg]', '-rotate-[0.8deg]'][index % 3];
 ---
@@ -24,7 +25,10 @@ const tilt = ['-rotate-[1.5deg]', 'rotate-[1.2deg]', '-rotate-[0.8deg]'][index %
   style={`animation-delay:${index * 110}ms`}
 >
   <div class={`flex items-start justify-between border-b border-ink p-4 ${t.bg}`}>
-    <span class={`grid h-[42px] w-12 place-items-center rounded-lg border border-ink bg-win font-mono text-sm font-medium ${t.ink}`}>{icon}</span>
+    <span
+      class={`grid h-[42px] w-12 place-items-center rounded-lg border border-ink bg-win font-mono text-sm font-medium ${t.ink}`}
+      style={`view-transition-name: ${vt}`}
+    >{icon}</span>
     <span class={`font-mono text-xs ${t.ink}`}>{year}</span>
   </div>
   <div class="p-4">

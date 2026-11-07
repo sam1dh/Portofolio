@@ -8,9 +8,10 @@ type Props = {
   file?: boolean;
   lit?: boolean;
   wiggle?: number;
+  vt?: string;
 };
 
-export default function FolderIcon({ label, href, tint, file, lit, wiggle = 0 }: Props) {
+export default function FolderIcon({ label, href, tint, file, lit, wiggle = 0, vt }: Props) {
   const controls = useAnimationControls();
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function FolderIcon({ label, href, tint, file, lit, wiggle = 0 }:
       </span>
       <motion.span
         animate={controls}
+        style={vt ? { viewTransitionName: vt } : undefined}
         className={`${file ? 'file-icon' : 'folder'} ${tint} transition-[translate,scale] duration-150 group-hover:-translate-y-1 group-hover:-rotate-3 ${
           lit ? '-translate-y-1 scale-105 outline-2 outline-offset-4 outline-[#7F77DD]' : ''
         }`}

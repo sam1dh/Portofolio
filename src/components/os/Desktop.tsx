@@ -164,12 +164,13 @@ export default function Desktop() {
                 file={f.file}
                 lit={lit === f.id}
                 wiggle={wiggles[f.id]}
+                vt={f.file ? undefined : `folder-${f.id}`}
               />
             </motion.div>
           ))}
         </div>
 
-        <div className="absolute bottom-3 left-1/2 z-[1000] -translate-x-1/2">
+        <div className="absolute bottom-3 left-1/2 z-[1000] -translate-x-1/2" style={{ viewTransitionName: 'dock' }}>
           <motion.div {...rise(0.5)}>
             <Dock
               items={[

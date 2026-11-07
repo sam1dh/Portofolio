@@ -9,7 +9,10 @@ const internships = (await getCollection('internships')).sort((a, b) => a.data.o
 <Page title="Internships" path="~ / internships" back="/" description="Where Sameen has worked.">
   <div class="p-6 sm:p-8">
     <p class="font-mono text-xs text-sub">{internships.length} items · click a card to open it</p>
-    <h1 class="mt-3 font-serif text-5xl leading-none">places i've <em>worked</em></h1>
+    <div class="mt-3 flex items-center gap-4">
+      <span class="folder shrink-0 bg-sky" style="view-transition-name: folder-internships"></span>
+      <h1 class="font-serif text-5xl leading-none">places i've <em>worked</em></h1>
+    </div>
     <p class="mt-2.5 text-[15px] text-sub">Three internships before final year, from QA to production voice AI.</p>
     <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {internships.map((w, i) => (
@@ -22,6 +25,7 @@ const internships = (await getCollection('internships')).sort((a, b) => a.data.o
           tags={w.data.tools}
           tint={w.data.tint}
           index={i}
+          vt={`icon-${w.id}`}
         />
       ))}
     </div>
