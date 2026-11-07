@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Desktop from '../../components/os/Desktop';
+import { getContributions } from '../../lib/github';
 import { getFolders } from '../../lib/folders';
 
 export async function getStaticPaths() {
@@ -12,8 +13,9 @@ export async function getStaticPaths() {
 const { slug } = Astro.params;
 const { title, description } = Astro.props;
 const folders = await getFolders();
+const contributions = await getContributions();
 ---
 
 <Base title={`${title} · sameen.os`} description={description}>
-  <Desktop client:load folders={folders} initial={{ folder: 'projects', item: slug }} />
+  <Desktop client:load folders={folders} contributions={contributions} initial={{ folder: 'projects', item: slug }} />
 </Base>

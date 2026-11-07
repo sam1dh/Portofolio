@@ -1,5 +1,8 @@
+const githubUser = 'sam1dh';
+
 export const SITE = {
   email: 'sameendhanimisetti@gmail.com',
-  github: 'https://github.com/sam1dh',
+  githubUser,
+  github: `https://github.com/${githubUser}`,
   linkedin: 'https://www.linkedin.com/in/your-profile',
 };

@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import type { Contributions } from '../../lib/github';
 
 const W = 1280; // design width
 const H = 800; // design height
 const PANEL_H = 138; // desk front, from under the desk top to the bottom of the screen
 const INK = '#1E1A3A';
 const line = 'border-[1.5px] border-ink';
+const tip =
+  'pointer-events-none absolute z-10 whitespace-nowrap rounded-md bg-ink px-2 py-0.5 font-mono text-[13px] text-win opacity-0 transition-opacity group-hover:opacity-100';
 
 type Props = {
-  night: boolean;
-  onLamp: () => void;
+  running: boolean;
+  onRun: () => void;
+  speaking: boolean;
   screen: ReactNode;
+  contributions: Contributions;
 };
 
 const box = (left: number, top: number, width: number, height: number, extra: CSSProperties = {}): CSSProperties => ({
@@ -21,31 +26,17 @@ const box = (left: number, top: number, width: number, height: number, extra: CS
   ...extra,
 });
 
-// one symmetric curve: x maps straight to t, so every bulb hangs exactly on the wire
-const WIRE_END = 880;
-const WIRE_Y = 14;
-const WIRE_SAG = 110;
-const BULB_COLORS = ['#FAC775', '#ED93B1', '#5DCAA5', '#85B7EB', '#F0997B'];
-const BULBS = Array.from({ length: 13 }, (_, i) => {
-  const x = 30 + i * 68;
-  const t = x / WIRE_END;
-  const y = (1 - t) ** 2 * WIRE_Y + 2 * (1 - t) * t * WIRE_SAG + t ** 2 * WIRE_Y;
-  return { x, y, c: BULB_COLORS[i % BULB_COLORS.length] };
-});
+const HEAT = ['#3C3489', '#534AB7', '#7F77DD', '#5DCAA5', '#9FE1CB'];
+const BAR_COLORS = ['#AFA9EC', '#9FE1CB', '#F4C0D1', '#FAC775', '#B5D4F4'];
+const BARS = Array.from({ length: 22 }, (_, i) => ({
+  c: BAR_COLORS[i % BAR_COLORS.length],
+  d: `${(0.3 + ((i * 7) % 5) * 0.08).toFixed(2)}s`,
+  h: `${50 + ((i * 37) % 50)}%`,
+}));
 
-const BOOKS = [
-  { l: 44, t: 302, w: 28, h: 78, c: '#5DCAA5', r: 0 },
-  { l: 76, t: 290, w: 28, h: 90, c: '#85B7EB', r: 0 },
-  { l: 108, t: 314, w: 24, h: 66, c: '#ED93B1', r: 0 },
-  { l: 136, t: 324, w: 22, h: 56, c: '#FAC775', r: 12 },
-];
-
-const STARS = [
-  [30, 26],
-  [118, 52],
-  [160, 104],
-  [70, 124],
-];
+// acoustic foam panels behind everything
+const FOAM =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Crect x='1' y='1' width='54' height='54' rx='3' fill='%23C7BFEE' stroke='%23B4ACE8' stroke-width='1.5'/%3E%3Cpath d='M1 12h54M1 24h54M1 36h54M1 48h54' stroke='%23BBB3EB' stroke-width='2'/%3E%3C/svg%3E\")";
 
 function puneTime() {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -54,9 +45,9 @@ function puneTime() {
     minute: '2-digit',
     hour12: false,
   }).formatToParts(new Date());
-  const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 12) % 24;
+  const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0) % 24;
   const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
-  return { h, m };
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 function Stage({ s, front, children }: { s: number; front?: boolean; children: ReactNode }) {
@@ -70,11 +61,26 @@ function Stage({ s, front, children }: { s: number; front?: boolean; children: R
   );
 }
 
-export default function DeskScene({ night, onLamp, screen }: Props) {
+function HexPanels() {
+  return (
+    <g stroke={INK} strokeWidth="1.5">
+      <polygon points="40,8 59,19 59,41 40,52 21,41 21,19" fill="#AFA9EC" />
+      <polygon points="78,30 97,41 97,63 78,74 59,63 59,41" fill="#F4C0D1" />
+      <polygon points="40,52 59,63 59,85 40,96 21,85 21,63" fill="#9FE1CB" />
+      <polygon points="108,52 127,63 127,85 108,96 89,85 89,63" fill="#FAC775" />
+      <polygon points="78,62 97,73 97,95 78,106 59,95 59,73" fill="#B5D4F4" />
+    </g>
+  );
+}
+
+export default function DeskScene({ running, onRun, speaking, screen, contributions }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [s, setS] = useState(0);
-  const [time, setTime] = useState<{ h: number; m: number } | null>(null);
+  const [time, setTime] = useState('--:--');
+  const [tok, setTok] = useState(40);
+  const [quack, setQuack] = useState(false);
 
+  // scale the room to fit the screen
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -89,79 +95,138 @@ export default function DeskScene({ night, onLamp, screen }: Props) {
   }, []);
 
   useEffect(() => {
-    const tick = () => setTime(puneTime());
-    tick();
-    const t = setInterval(tick, 30_000);
-    return () => clearInterval(t);
+    const t = () => setTime(puneTime());
+    t();
+    const id = setInterval(t, 20_000);
+    return () => clearInterval(id);
   }, []);
 
-  const h = time?.h ?? 12;
-  const m = time?.m ?? 0;
-  const phase = night ? 'night' : h >= 6 && h < 17 ? 'day' : h >= 17 && h < 19 ? 'eve' : 'night';
-  const sky = { day: '#85B7EB', eve: '#F0997B', night: '#26215C' }[phase];
-  const showSun = phase !== 'night';
+  // tokens per second wobble while the model runs
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setTok(38 + Math.round(Math.random() * 8)), 700);
+    return () => clearInterval(id);
+  }, [running]);
+
+  const ducky = () => {
+    setQuack(true);
+    setTimeout(() => setQuack(false), 1800);
+  };
 
   return (
     <div
       ref={ref}
       className="relative h-full w-full overflow-hidden bg-wall transition-opacity duration-500"
-      style={{
-        opacity: s ? 1 : 0,
-        backgroundImage: 'radial-gradient(rgb(60 52 137 / 0.18) 1px, transparent 1.3px)',
-        backgroundSize: '18px 18px',
-      }}
+      style={{ opacity: s ? 1 : 0, backgroundImage: FOAM }}
     >
       {/* desk front and desk top stretch the full width */}
       <div className="absolute inset-x-0 bottom-0 border-t-[1.5px] border-ink bg-[#F3E1C7]" style={{ height: PANEL_H * s }} />
       <div className="absolute inset-x-0 border-y-[1.5px] border-ink bg-peach" style={{ bottom: PANEL_H * s, height: 22 * s }} />
 
+      {/* back: the room */}
       <Stage s={s}>
-        <svg style={box(0, 0, 880, 140)} viewBox="0 0 880 140" aria-hidden="true">
-          <path d={`M0 ${WIRE_Y} Q440 ${WIRE_SAG} ${WIRE_END} ${WIRE_Y}`} fill="none" stroke={INK} strokeWidth="1.5" />
-          {BULBS.map((b) => (
-            <g key={b.x}>
-              <line x1={b.x} y1={b.y} x2={b.x} y2={b.y + 8} stroke={INK} strokeWidth="1.5" />
-              <ellipse cx={b.x} cy={b.y + 17} rx="6" ry="8" fill={b.c} stroke={INK} strokeWidth="1.2" />
-            </g>
-          ))}
+        {/* github heatmap */}
+        <div style={box(36, 46, 250, 104)} className="rounded-md border-[3px] border-win bg-[#26215C] px-2.5 py-2 outline outline-[1.5px] outline-ink">
+          <div className="mb-1.5 flex justify-between font-mono text-[12px]">
+            <span className="text-[#CECBF6]">github · past year</span>
+            {contributions.total > 0 && <span className="text-[#9FE1CB]">{contributions.total.toLocaleString('en-IN')}</span>}
+          </div>
+          <div className="grid grid-flow-col gap-[2px]" style={{ gridTemplateRows: 'repeat(7, 6px)', gridAutoColumns: '6px' }}>
+            {contributions.weeks.flatMap((w, i) =>
+              w.map((lvl, j) => <span key={`${i}-${j}`} className="rounded-[1px]" style={{ background: HEAT[lvl] }} />),
+            )}
+          </div>
+        </div>
+
+        {/* hackathon lanyards */}
+        <div className="group" style={box(306, 36, 70, 110)}>
+          <span className={`${line} absolute left-[30px] top-0 size-2.5 rounded-full bg-win`} />
+          <svg style={box(0, 6, 70, 44)} aria-hidden="true">
+            <path d="M35 2 L13 40 M35 2 L35 42 M35 2 L57 38" stroke={INK} strokeWidth="1.3" fill="none" />
+          </svg>
+          <span className={`${line} absolute left-[2px] top-[46px] h-8 w-[22px] -rotate-[8deg] rounded bg-[#F4C0D1]`} />
+          <span className={`${line} absolute left-[24px] top-[48px] h-8 w-[22px] rounded bg-[#9FE1CB]`} />
+          <span className={`${line} absolute left-[46px] top-[44px] h-8 w-[22px] rotate-[7deg] rounded bg-sticky`} />
+          <span className={`${tip} left-0 top-[88px]`}>hackathon badges: SIH · SanDisk · Blostem</span>
+        </div>
+
+        {/* voice waveform: moves only while the chat is speaking */}
+        <div className={speaking ? 'talking' : ''} style={box(430, 0, 330, 160)} aria-hidden="true">
+          <svg style={box(0, 0, 330, 52)}>
+            <line x1="50" y1="0" x2="50" y2="52" stroke={INK} strokeWidth="1.3" />
+            <line x1="280" y1="0" x2="280" y2="52" stroke={INK} strokeWidth="1.3" />
+          </svg>
+          <div className="absolute left-0 top-[50px] flex h-[80px] w-[330px] items-end gap-[5px] rounded-xl border-[1.5px] border-ink bg-[#26215C] px-4 py-3">
+            {BARS.map((b, i) => (
+              <i
+                key={i}
+                className="bar flex-1 rounded-t-[3px]"
+                style={{ background: b.c, height: '14%', '--d': b.d, '--h': b.h } as CSSProperties}
+              />
+            ))}
+          </div>
+          <span className="absolute left-[44px] top-[136px] font-mono text-[13px] text-sub">
+            voice_agent · {speaking ? 'speaking' : 'idle'}
+          </span>
+        </div>
+
+        {/* led clock */}
+        <div style={box(820, 46, 170, 72)} className="flex flex-col items-center justify-center rounded-xl border-[1.5px] border-ink bg-[#26215C]">
+          <span className="font-mono text-[30px] font-medium leading-none tracking-[3px] text-[#9FE1CB]">{time}</span>
+          <span className="mt-1 font-mono text-[13px] text-[#AFA9EC]">pune · ist</span>
+        </div>
+
+        {/* hex light panels */}
+        <svg style={box(36, 232, 250, 196)} viewBox="0 0 140 110" aria-hidden="true">
+          <HexPanels />
         </svg>
 
-        {/* window */}
-        <div className={`${line} overflow-hidden rounded-lg transition-colors duration-500`} style={box(50, 92, 210, 172, { background: sky })} aria-hidden="true">
-          <span className={`${line} absolute right-5 top-[18px] size-9 rounded-full bg-sticky transition-opacity`} style={{ opacity: showSun ? 1 : 0 }} />
-          <span className={`${line} absolute left-5 top-[76px] h-6 w-[74px] rounded-full bg-white transition-opacity`} style={{ opacity: showSun ? 1 : 0 }} />
-          {!showSun && STARS.map(([x, y]) => <span key={x} className="absolute size-1 rounded-full bg-white" style={{ left: x, top: y }} />)}
-          <span className="absolute inset-y-0 left-1/2 w-[1.5px] bg-ink" />
-          <span className="absolute inset-x-0 top-1/2 h-[1.5px] bg-ink" />
+        {/* boom-arm mic */}
+        <div className="group" style={box(70, 430, 200, 210)}>
+          <svg style={box(0, 0, 200, 210)} viewBox="0 0 110 116" aria-hidden="true">
+            <path d="M62 114 V98 L30 60 L48 28" fill="none" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+            <circle cx="30" cy="60" r="3.5" fill="#FCFBFF" stroke={INK} strokeWidth="1.5" />
+            <rect x="52" y="96" width="20" height="10" fill="#FCFBFF" stroke={INK} strokeWidth="1.5" />
+            <rect x="36" y="2" width="24" height="38" rx="12" fill="#CECBF6" stroke={INK} strokeWidth="1.5" transform="rotate(20 48 21)" />
+          </svg>
+          <span className={`${tip} left-[110px] top-0`}>voice_agent: listening…</span>
         </div>
-        <div className="bg-ink" style={box(20, 80, 268, 5)} />
-        <div className={`${line} bg-[#F4C0D1]`} style={box(22, 86, 42, 208, { borderRadius: '3px 3px 18px 6px' })} />
-        <div className={`${line} bg-[#F4C0D1]`} style={box(246, 86, 42, 208, { borderRadius: '3px 3px 6px 18px' })} />
 
-        {/* shelf */}
-        {BOOKS.map((b) => (
-          <div
-            key={b.l}
-            className={`${line} border-b-0`}
-            style={box(b.l, b.t + 10, b.w, b.h, { background: b.c, borderRadius: '3px 3px 0 0', rotate: `${b.r}deg`, transformOrigin: 'bottom left' })}
-          />
-        ))}
-        <div style={box(200, 314, 48, 76)} aria-hidden="true">
-          <span className={`${line} bg-[#97C459]`} style={box(4, 8, 14, 26, { borderRadius: '14px 14px 3px 3px', rotate: '-20deg' })} />
-          <span className={`${line} bg-[#639922]`} style={box(17, 0, 14, 34, { borderRadius: '14px 14px 3px 3px' })} />
-          <span className={`${line} bg-[#97C459]`} style={box(30, 10, 14, 24, { borderRadius: '14px 14px 3px 3px', rotate: '22deg' })} />
-          <span className={`${line} bg-[#F0997B]`} style={box(0, 34, 48, 42, { borderRadius: '3px 3px 10px 10px' })} />
-        </div>
-        <div className={`${line} bg-peach`} style={box(26, 390, 244, 12, { borderRadius: 3 })} />
-
-        {/* clock */}
-        <svg style={box(850, 40, 90, 90)} viewBox="0 0 58 58" aria-hidden="true">
-          <circle cx="29" cy="29" r="27" fill="#FCFBFF" stroke={INK} strokeWidth="1.8" />
-          <circle cx="29" cy="29" r="22" fill="none" stroke="#CECBF6" strokeWidth="3" />
-          <line x1="29" y1="29" x2="29" y2="16" stroke={INK} strokeWidth="3" strokeLinecap="round" transform={`rotate(${(h % 12) * 30 + m * 0.5} 29 29)`} />
-          <line x1="29" y1="29" x2="29" y2="9" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" transform={`rotate(${m * 6} 29 29)`} />
-          <circle cx="29" cy="29" r="2.5" fill={INK} />
+        {/* headphones on a hook */}
+        <svg style={box(1010, 330, 90, 140)} viewBox="0 0 60 90" aria-hidden="true">
+          <rect x="26" y="0" width="8" height="14" rx="2" fill="#FCFBFF" stroke={INK} strokeWidth="1.5" />
+          <path d="M10 52 V36 a20 20 0 0 1 40 0 V52" fill="none" stroke={INK} strokeWidth="3" />
+          <rect x="4" y="46" width="13" height="22" rx="5" fill="#ED93B1" stroke={INK} strokeWidth="1.5" />
+          <rect x="43" y="46" width="13" height="22" rx="5" fill="#ED93B1" stroke={INK} strokeWidth="1.5" />
         </svg>
+
+        {/* keyboard and mouse */}
+        <div style={box(320, 610, 210, 30)} aria-hidden="true">
+          <span className={`${line} absolute inset-x-0 bottom-0 top-[8px] rounded-[6px_6px_3px_3px] bg-win`} />
+          <span className="absolute inset-x-[10px] top-0 flex h-[14px] gap-[3px]">
+            {Array.from({ length: 12 }, (_, i) => (
+              <span
+                key={i}
+                className="flex-1 rounded-[3px] border border-ink"
+                style={{ background: i === 5 || i === 6 ? '#FAC775' : i % 4 === 0 ? '#F4C0D1' : '#CECBF6' }}
+              />
+            ))}
+          </span>
+        </div>
+        <span className={`${line} bg-win`} style={box(760, 622, 26, 18, { borderRadius: '13px 13px 5px 5px' })} />
+
+        {/* </> mug */}
+        <div style={box(840, 576, 46, 64)} aria-hidden="true">
+          <svg style={box(2, -40, 42, 36)} viewBox="0 0 26 22">
+            <path className="steam" d="M6 20c-3-4 3-6 0-9s3-6 0-9" fill="none" stroke={INK} strokeWidth="1.3" />
+            <path className="steam" style={{ animationDelay: '0.8s' }} d="M13 20c-3-4 3-6 0-9s3-6 0-9" fill="none" stroke={INK} strokeWidth="1.3" />
+            <path className="steam" style={{ animationDelay: '1.6s' }} d="M20 20c-3-4 3-6 0-9s3-6 0-9" fill="none" stroke={INK} strokeWidth="1.3" />
+          </svg>
+          <div className={`${line} grid h-full w-full place-items-center bg-[#26215C] font-mono text-[13px] text-[#9FE1CB]`} style={{ borderRadius: '3px 3px 12px 12px' }}>
+            {'</>'}
+          </div>
+          <div className={`${line} border-l-0`} style={box(46, 12, 16, 24, { borderRadius: '0 12px 12px 0' })} />
+        </div>
 
         {/* desk drawers (the dock sits between them) */}
         {[40, 860].map((x) => (
@@ -169,58 +234,21 @@ export default function DeskScene({ night, onLamp, screen }: Props) {
             <span className={`${line} absolute left-1/2 top-1/2 h-3 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-win`} />
           </div>
         ))}
-
-        {/* lamp: click for night mode */}
-        <button
-          type="button"
-          onClick={onLamp}
-          aria-label={night ? 'Turn the lights on' : 'Turn the lights off'}
-          className="cursor-pointer"
-          style={box(56, 446, 130, 194)}
-        >
-          <span className="bg-ink" style={box(38, 30, 6, 160, { rotate: '-8deg', transformOrigin: 'bottom' })} />
-          <span className={`${line} bg-[#F0997B]`} style={box(30, 6, 80, 40, { borderRadius: '40px 40px 6px 6px', rotate: '28deg' })} />
-          <span className={`${line} bg-win`} style={box(12, 178, 72, 16, { borderRadius: '50%' })} />
-        </button>
-
-        {/* chai */}
-        <div style={box(1010, 576, 46, 64)} aria-hidden="true">
-          <svg style={box(2, -40, 42, 36)} viewBox="0 0 26 22">
-            <path className="steam" d="M6 20c-3-4 3-6 0-9s3-6 0-9" fill="none" stroke={INK} strokeWidth="1.3" />
-            <path className="steam" style={{ animationDelay: '0.8s' }} d="M13 20c-3-4 3-6 0-9s3-6 0-9" fill="none" stroke={INK} strokeWidth="1.3" />
-            <path className="steam" style={{ animationDelay: '1.6s' }} d="M20 20c-3-4 3-6 0-9s3-6 0-9" fill="none" stroke={INK} strokeWidth="1.3" />
-          </svg>
-          <div className={`${line} h-full w-full bg-blush`} style={{ borderRadius: '3px 3px 12px 12px' }} />
-          <div className={`${line} border-l-0`} style={box(46, 12, 16, 24, { borderRadius: '0 12px 12px 0' })} />
-        </div>
-
-        {/* plant */}
-        <div style={box(1086, 500, 100, 140)} aria-hidden="true">
-          <div className="sway" style={box(6, 0, 88, 100, { transformOrigin: '50% 100%' })}>
-            <span className={`${line} bg-[#97C459]`} style={box(4, 22, 38, 54, { borderRadius: '50% 0 50% 0', rotate: '-30deg' })} />
-            <span className={`${line} bg-[#639922]`} style={box(26, 0, 38, 64, { borderRadius: '50% 0 50% 0', rotate: '10deg' })} />
-            <span className={`${line} bg-[#97C459]`} style={box(46, 26, 38, 52, { borderRadius: '0 50% 0 50%', rotate: '30deg' })} />
-          </div>
-          <div className={`${line} bg-[#F0997B]`} style={box(20, 88, 62, 52, { borderRadius: '3px 3px 12px 12px' })} />
-        </div>
       </Stage>
 
-      <div className="pointer-events-none absolute inset-0 bg-[rgb(30_26_58/0.45)] transition-opacity duration-500" style={{ opacity: night ? 1 : 0 }} />
+      {/* running a model dims the room */}
+      <div className="pointer-events-none absolute inset-0 bg-[rgb(20_16_44/0.5)] transition-opacity duration-500" style={{ opacity: running ? 1 : 0 }} />
 
+      {/* front: glow, the PC, the duck and the AI box */}
       <Stage s={s} front>
-        <svg style={box(0, 0, 880, 140)} viewBox="0 0 880 140" aria-hidden="true">
-          {BULBS.map((b) => (
-            <circle key={b.x} cx={b.x} cy={b.y + 17} r="16" fill={b.c} style={{ opacity: night ? 0.55 : 0, transition: 'opacity 0.5s' }} />
-          ))}
+        <svg style={box(36, 232, 250, 196)} viewBox="0 0 140 110" aria-hidden="true">
+          <g style={{ opacity: running ? 0.55 : 0, transition: 'opacity 0.5s' }}>
+            <circle cx="40" cy="30" r="30" fill="#AFA9EC" />
+            <circle cx="78" cy="70" r="34" fill="#5DCAA5" />
+            <circle cx="108" cy="74" r="24" fill="#FAC775" />
+          </g>
         </svg>
-        <div
-          className="transition-opacity duration-500"
-          style={box(110, 500, 190, 140, {
-            background: 'rgb(250 199 117 / 0.55)',
-            clipPath: 'polygon(18% 0, 42% 0, 100% 100%, 0 100%)',
-            opacity: night ? 1 : 0,
-          })}
-        />
+
         {/* the PC: 398 screen + 56 neck + 20 foot = rests exactly on the desk */}
         <div className="pointer-events-auto" style={box(300, 166, 680, 474)}>
           <div className={`${line} h-[398px] rounded-[20px] bg-win p-[18px]`}>
@@ -228,7 +256,53 @@ export default function DeskScene({ night, onLamp, screen }: Props) {
           </div>
           <div className="mx-auto h-14 w-14 border-x-[1.5px] border-ink bg-win" />
           <div className={`${line} mx-auto h-5 w-[200px] rounded-t-md bg-win`} />
+
+          {/* rubber duck */}
+          <button type="button" onClick={ducky} aria-label="Rubber duck" className="absolute -top-[42px] right-10" style={{ width: 52, height: 44 }}>
+            <svg width="52" height="44" viewBox="0 0 30 26" aria-hidden="true">
+              <ellipse cx="14" cy="18" rx="12" ry="7" fill="#FAC775" stroke={INK} strokeWidth="1.3" />
+              <circle cx="20" cy="9" r="6" fill="#FAC775" stroke={INK} strokeWidth="1.3" />
+              <path d="M25 9 l5 1 -5 2z" fill="#F0997B" stroke={INK} strokeWidth="1" />
+              <circle cx="21" cy="8" r="1.2" fill={INK} />
+            </svg>
+            <span
+              className={`pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-ink px-2 py-0.5 font-mono text-[13px] text-win transition-opacity ${
+                quack ? 'opacity-100' : 'opacity-0'
+              }`}
+              aria-live="polite"
+            >
+              {quack ? 'quack. did you check the logs?' : ''}
+            </span>
+          </button>
         </div>
+
+        {/* mini AI box: click to run a model (the room's night mode) */}
+        <button
+          type="button"
+          onClick={onRun}
+          aria-pressed={running}
+          aria-label={running ? 'Stop the model' : 'Run a model on my AI box'}
+          className="group pointer-events-auto"
+          style={box(990, 512, 170, 128)}
+        >
+          <span className={`${line} absolute inset-0 overflow-hidden rounded-[16px_16px_10px_10px] bg-peach`}>
+            <span className="absolute inset-x-3 top-3 flex h-9 items-center gap-2 rounded-md bg-ink px-3">
+              <span className="blink size-2 rounded-full bg-[#5DCAA5]" />
+              <span className="font-mono text-[13px] text-[#9FE1CB]">{running ? `running · ${tok} tok/s` : 'idle'}</span>
+            </span>
+            <span className="absolute inset-x-3 top-[60px] flex flex-col gap-1.5">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full ${running ? 'vent-on bg-[#5DCAA5]' : 'bg-[#CECBF6]'}`}
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+            </span>
+            <span className="absolute bottom-2 left-3 font-mono text-[13px] text-[#633806]">ai·box 01</span>
+          </span>
+          <span className={`${tip} -top-8 right-0`}>{running ? 'click to stop' : 'my mini AI box · click to run a model'}</span>
+        </button>
       </Stage>
     </div>
   );

@@ -10,6 +10,7 @@ import Resume from './Resume';
 import DeskScene from './DeskScene';
 import PaperFolder from './PaperFolder';
 import type { FolderKey, Folders } from '../../lib/folder-types';
+import type { Contributions } from '../../lib/github';
 import { SITE } from '../../data/site';
 
 type WinId = 'contact' | 'resume';
@@ -95,9 +96,9 @@ function Sleep({ onWake }: { onWake: () => void }) {
   );
 }
 
-type Props = { folders: Folders; initial?: View };
+type Props = { folders: Folders; contributions: Contributions; initial?: View };
 
-export default function Desktop({ folders, initial = null }: Props) {
+export default function Desktop({ folders, contributions, initial = null }: Props) {
   const deskRef = useRef<HTMLDivElement>(null);
   const decided = useRef(false);
   const topZ = useRef(960);
@@ -105,7 +106,8 @@ export default function Desktop({ folders, initial = null }: Props) {
   const [intro, setIntro] = useState(!initial);
   const [ready, setReady] = useState(Boolean(initial));
   const [awake, setAwake] = useState(true);
-  const [night, setNight] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [wins, setWins] = useState<Record<WinId, WinState>>({
     contact: { open: false, z: 0, nudge: 0 },
     resume: { open: false, z: 0, nudge: 0 },
@@ -249,6 +251,7 @@ export default function Desktop({ folders, initial = null }: Props) {
         onHighlight={setLit}
         onWiggle={wiggle}
         onOpenResume={openResume}
+        onSpeaking={setSpeaking}
         onClose={
           compact
             ? undefined
@@ -286,7 +289,13 @@ export default function Desktop({ folders, initial = null }: Props) {
       <div ref={deskRef} className="relative flex-1 lg:overflow-hidden">
         {/* laptops and bigger: the room */}
         <div className="absolute inset-0 max-lg:hidden">
-          <DeskScene night={night} onLamp={() => setNight((n) => !n)} screen={compact === false ? screen : null} />
+          <DeskScene
+          running={running}
+          onRun={() => setRunning((r) => !r)}
+          speaking={speaking}
+          contributions={contributions}
+          screen={compact === false ? screen : null}
+        />
         </div>
 
         {/* folders pinned to the top-right corner */}

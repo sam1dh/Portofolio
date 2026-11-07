@@ -1,12 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
 import Desktop from '../components/os/Desktop';
+import { getContributions } from '../lib/github';
 import { getFolders } from '../lib/folders';
 
 const folders = await getFolders();
+const contributions = await getContributions();
 ---
 
 <Base title="Sameen Dhanimisetti · sameen.os">
   <h1 class="sr-only">Sameen Dhanimisetti, AI and backend engineer</h1>
-  <Desktop client:load folders={folders} />
+  <Desktop client:load folders={folders} contributions={contributions} />
 </Base>

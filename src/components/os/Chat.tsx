@@ -8,6 +8,7 @@ type Props = {
   onWiggle: (id: FolderId) => void;
   onOpenResume: () => void;
   onClose?: () => void;
+  onSpeaking?: (talking: boolean) => void;
   hint: string;
 };
 
@@ -16,7 +17,7 @@ type Msg = { id: number; from: 'bot' | 'me'; content?: ReactNode; typing?: boole
 const CHAT_KEY = 'sameen-chat-seen';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, hint }: Props) {
+export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onSpeaking, hint }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chipsOn, setChipsOn] = useState(false);
   const [used, setUsed] = useState<string[]>([]);
@@ -27,6 +28,8 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, hin
   const fast = useRef(false);
   const reduce = useRef(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const speak = useRef(onSpeaking);
+  speak.current = onSpeaking;
 
   useEffect(() => {
     alive.current = true;
@@ -50,11 +53,14 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, hin
         after?.();
         return;
       }
+      speak.current?.(true);
       setMsgs((m) => [...m, { id, from: 'bot', typing: true }]);
       await sleep(550);
       if (!alive.current) return;
       setMsgs((m) => m.map((x) => (x.id === id ? { ...x, typing: false, content } : x)));
       after?.();
+      await sleep(250);
+      speak.current?.(false);
       await sleep(pause);
     });
   };
