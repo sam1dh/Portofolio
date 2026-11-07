@@ -301,3 +301,23 @@
   .hang:hover, .hang.go, .heat:hover .cell, .shake, .note, .ring,
   .kbd:hover .key, .wobble:hover, .colon { animation: none; }
 }
+
+/* disco keyboard */
+@keyframes disco-key {
+  0% { background: #F4C0D1; }
+  25% { background: #FAC775; }
+  50% { background: #9FE1CB; }
+  75% { background: #B5D4F4; }
+  100% { background: #AFA9EC; }
+}
+.kbd.disco .key { animation: disco-key 0.6s linear infinite; animation-delay: var(--i); }
+
+@keyframes spot {
+  0%, 100% { translate: -25% 0; }
+  50% { translate: 25% 12%; }
+}
+.spot { animation: spot 2.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kbd.disco .key, .spot { animation: none; }
+}

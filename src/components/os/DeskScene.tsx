@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import type { Contributions } from '../../lib/github';
+import type { AnimationItem } from 'lottie-web';
 import { SITE } from '../../data/site';
+import { factForToday } from '../../data/tech-facts';
 
 const W = 1280; // design width
 const H = 800; // design height
@@ -57,21 +59,21 @@ const BADGES = [
   { id: 'blo', color: '#FAC775', tilt: 16, label: 'Blostem AI Builder · 3rd of 650+ teams' },
 ];
 
-const FACTS = [
-  'won a debate competition. will also win the tabs vs spaces argument.',
-  '3rd of 650+ teams at a hackathon. the other 647 were great too.',
-  'cgpa 9.13. the .13 took the most effort.',
-  '3 internships before final year. sleep schedule: in code review.',
-  "i debug by explaining bugs to the rubber duck. it hasn't failed me yet.",
-  'first prize in public speaking, zero stage fright. ask me to demo.',
-];
 const LOCKED = [
   'nice try. this drawer is personal.',
   "still locked. it's mostly snacks.",
   'ok fine: snacks and half-built side projects.',
   'access requires one (1) job offer.',
 ];
-const HEARD = ['heard: “hire sameen”', 'heard: “ship it”', 'heard: “one more feature”', 'heard: “it works on my machine”'];
+
+const BUDDY_LINES = ['hi! i guard the lab.', 'psst. projects/ is the good stuff.', 'beep boop. hire my human.'];
+const BUDDY_DUR = 1700; // lottie clip length in ms; keep in sync with public/props/buddy.json
+
+const SPOTS = [
+  { c: '#F4C0D1', l: '8%', t: '12%', d: '0s' },
+  { c: '#9FE1CB', l: '52%', t: '4%', d: '0.4s' },
+  { c: '#FAC775', l: '28%', t: '40%', d: '0.8s' },
+];
 
 // acoustic foam panels behind everything
 const FOAM =
@@ -91,7 +93,6 @@ function puneParts(d: Date) {
   return { h, m };
 }
 
-// what i'm probably doing right now, by pune time
 function status(h: number) {
   if (h < 6) return 'asleep (probably)';
   if (h < 9) return 'chai + inbox';
@@ -119,22 +120,56 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const [now, setNow] = useState<Date | null>(null);
   const [tok, setTok] = useState(40);
 
-  // interactive state
   const [quack, setQuack] = useState(false);
   const [hoverBar, setHoverBar] = useState<number | null>(null);
   const [voice, setVoice] = useState<string | null>(null);
   const [clockMode, setClockMode] = useState(0);
   const [hex, setHex] = useState([0, 1, 2, 3, 4]);
   const [badge, setBadge] = useState<string | null>(null);
-  const [micOn, setMicOn] = useState(false);
-  const [music, setMusic] = useState(0); // 0 = off, otherwise a counter so notes replay
-  const [fact, setFact] = useState<number | null>(null);
+  const [music, setMusic] = useState(0);
+  const [disco, setDisco] = useState(0);
+  const [fact, setFact] = useState<string | null>(null);
   const [deny, setDeny] = useState<number | null>(null);
+  const [buddy, setBuddy] = useState<string | null>(null);
+  const [buddyOk, setBuddyOk] = useState(true);
+
+  // lab buddy: a lottie animation, still until clicked
+  const buddyRef = useRef<HTMLDivElement>(null);
+  const anim = useRef<AnimationItem | null>(null);
+  const [buddyReady, setBuddyReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/props/buddy.json');
+        if (!res.ok) throw new Error('no buddy animation');
+        const data = await res.json();
+        const lottie = (await import('lottie-web')).default;
+        if (cancelled || !buddyRef.current) return;
+        anim.current = lottie.loadAnimation({
+          container: buddyRef.current,
+          renderer: 'svg',
+          loop: true,
+          autoplay: false,
+          animationData: data,
+        });
+        anim.current.goToAndStop(0, true);
+        setBuddyReady(true);
+      } catch {
+        if (!cancelled) setBuddyOk(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      anim.current?.destroy();
+      anim.current = null;
+    };
+  }, []);
 
   // timers, with tokens so overlapping clicks don't cut each other short
   const timers = useRef<number[]>([]);
-  const tokens = useRef({ voice: 0, mic: 0, music: 0, fact: 0, deny: 0, quack: 0 });
-  const counts = useRef({ fact: 0, deny: 0, heard: 0 });
+  const tokens = useRef({ voice: 0, music: 0, disco: 0, fact: 0, deny: 0, quack: 0, buddy: 0, buddyStop: 0 });
+  const counts = useRef({ deny: 0, buddy: 0 });
   const later = (key: keyof typeof tokens.current, fn: () => void, ms: number) => {
     const t = ++tokens.current[key];
     timers.current.push(
@@ -145,12 +180,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   };
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const say = (text: string, ms: number) => {
-    setVoice(text);
-    later('voice', () => setVoice(null), ms);
-  };
-
-  // scale the room to fit the screen
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -176,11 +205,11 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
     return () => clearInterval(id);
   }, [running]);
 
-  // clock: pune time → your time → what i'm probably doing
   const pune = now ? puneParts(now) : null;
   const shown = clockMode === 1 && now ? { h: now.getHours(), m: now.getMinutes() } : pune;
   const clockSub = clockMode === 0 ? 'pune · ist' : clockMode === 1 ? 'your time' : pune ? status(pune.h) : '';
 
+  // the waveform only reacts to the chat and to its own click
   const talking = speaking || voice !== null;
   const caption = voice ?? (speaking ? 'speaking' : hoverBar !== null ? 'tuning…' : 'idle');
 
@@ -193,31 +222,39 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
     return { ...base, height: '14%', transition: 'height .3s' };
   };
 
-  const listen = () => {
-    setMicOn(true);
-    later('mic', () => setMicOn(false), 2600);
-    say(HEARD[counts.current.heard++ % HEARD.length], 2600);
+  const hello = () => {
+    setVoice('hey there, welcome in!');
+    later('voice', () => setVoice(null), 2200);
   };
-
   const playMusic = () => {
     setMusic((m) => m + 1);
-    later('music', () => setMusic(0), 2800);
-    say('now playing: lo-fi to debug to', 2800);
+    later('music', () => setMusic(0), 2400);
   };
-
+  const startDisco = () => {
+    setDisco((d) => d + 1);
+    later('disco', () => setDisco(0), 3500);
+  };
   const openFact = () => {
-    setFact(counts.current.fact++ % FACTS.length);
-    later('fact', () => setFact(null), 4500);
+    setFact(factForToday());
+    later('fact', () => setFact(null), 5000);
   };
-
   const tryLocked = () => {
     setDeny(counts.current.deny++);
     later('deny', () => setDeny(null), 2600);
   };
-
   const ducky = () => {
     setQuack(true);
     later('quack', () => setQuack(false), 1800);
+  };
+  const pokeBuddy = () => {
+    setBuddy(BUDDY_LINES[counts.current.buddy++ % BUDDY_LINES.length]);
+    later('buddy', () => setBuddy(null), 3000);
+    const a = anim.current;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (a && !reduce) {
+      a.goToAndPlay(0, true);
+      later('buddyStop', () => a.goToAndStop(0, true), BUDDY_DUR);
+    }
   };
 
   const onKey = (fn: () => void) => (e: KeyboardEvent) => {
@@ -233,13 +270,12 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
       className="relative h-full w-full overflow-hidden bg-wall transition-opacity duration-500"
       style={{ opacity: s ? 1 : 0, backgroundImage: FOAM }}
     >
-      {/* desk front and desk top stretch the full width */}
       <div className="absolute inset-x-0 bottom-0 border-t-[1.5px] border-ink bg-[#F3E1C7]" style={{ height: PANEL_H * s }} />
       <div className="absolute inset-x-0 border-y-[1.5px] border-ink bg-peach" style={{ bottom: PANEL_H * s, height: 22 * s }} />
 
       {/* back: the room */}
       <Stage s={s}>
-        {/* github heatmap: hangs from a nail, swings on hover, opens github */}
+        {/* github heatmap */}
         <a href={SITE.github} target="_blank" rel="noopener" aria-label="My GitHub profile" className="hang heat group" style={box(36, 22, 250, 142)}>
           <svg style={box(0, 0, 250, 40)} aria-hidden="true">
             <path d="M125 6 L22 38 M125 6 L228 38" stroke={INK} strokeWidth="1.2" fill="none" />
@@ -261,7 +297,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <span className={`${tip} -bottom-7 left-0`}>open my github ↗</span>
         </a>
 
-        {/* hackathon lanyards: each card swings on its own */}
+        {/* hackathon lanyards */}
         <div style={box(306, 30, 90, 150)}>
           <span className={`${line} absolute left-[40px] top-0 size-2.5 rounded-full bg-win`} />
           {BADGES.map((b) => (
@@ -287,7 +323,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           )}
         </div>
 
-        {/* voice waveform: follows the cursor, speaks on click */}
+        {/* voice waveform */}
         <div style={box(430, 0, 330, 160)}>
           <svg style={box(0, 0, 330, 52)} aria-hidden="true">
             <line x1="50" y1="0" x2="50" y2="52" stroke={INK} strokeWidth="1.3" />
@@ -297,8 +333,8 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
             role="button"
             tabIndex={0}
             aria-label="Voice waveform, click to hear a hello"
-            onClick={() => say('hey there, welcome in!', 2200)}
-            onKeyDown={onKey(() => say('hey there, welcome in!', 2200))}
+            onClick={hello}
+            onKeyDown={onKey(hello)}
             onMouseMove={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               setHoverBar(((e.clientX - r.left) / r.width) * BARS.length);
@@ -315,7 +351,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <span className="absolute left-[44px] top-[136px] font-mono text-[13px] text-sub">voice_agent · {caption}</span>
         </div>
 
-        {/* led clock: click to cycle */}
+        {/* led clock */}
         <button
           type="button"
           onClick={() => setClockMode((c) => (c + 1) % 3)}
@@ -334,7 +370,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <span className={`${tip} -bottom-8 right-0`}>click to switch</span>
         </button>
 
-        {/* hex lights: click a panel to change its color */}
+        {/* hex lights */}
         <svg style={box(36, 232, 250, 196)} viewBox="0 0 140 110" role="group" aria-label="Hex lights, click a panel to change its color">
           <g stroke={INK} strokeWidth="1.5">
             {HEX_POINTS.map((p, i) => (
@@ -349,44 +385,37 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           </g>
         </svg>
 
-        {/* mic: click to "talk" to the voice agent */}
-        <button type="button" onClick={listen} aria-label="Microphone, click to talk to my voice agent" className="group" style={box(70, 430, 200, 210)}>
-          <svg
-            style={box(0, 0, 200, 210)}
-            viewBox="0 0 110 116"
-            className="transition-transform duration-200 group-hover:-translate-y-1"
-            aria-hidden="true"
-          >
-            <path d="M62 114 V98 L30 60 L48 28" fill="none" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-            <circle cx="30" cy="60" r="3.5" fill="#FCFBFF" stroke={INK} strokeWidth="1.5" />
-            <rect x="52" y="96" width="20" height="10" fill="#FCFBFF" stroke={INK} strokeWidth="1.5" />
-            {micOn && (
-              <>
-                <circle className="ring" cx="48" cy="21" r="16" fill="none" stroke="#5DCAA5" strokeWidth="1.5" />
-                <circle className="ring" style={{ animationDelay: '0.5s' }} cx="48" cy="21" r="16" fill="none" stroke="#5DCAA5" strokeWidth="1.5" />
-              </>
+        {/* lab buddy: the lottie stays still until you click it, then waves with a speech bubble */}
+        <button type="button" onClick={pokeBuddy} aria-label="Lab buddy, click to say hi" className="group" style={box(70, 440, 200, 200)}>
+          <div
+            ref={buddyRef}
+            className={`absolute inset-0 transition-transform duration-200 group-hover:-translate-y-1 ${buddyReady ? '' : 'hidden'}`}
+          />
+          {!buddyReady &&
+            buddyOk && (
+              <span className="absolute inset-x-8 bottom-0 top-12 grid place-items-center rounded-xl border-[1.5px] border-dashed border-ink/50 text-center font-mono text-[12px] text-sub">
+                your gif
+                <br />
+                goes here
+              </span>
             )}
-            <rect
-              x="36"
-              y="2"
-              width="24"
-              height="38"
-              rx="12"
-              fill={micOn ? '#9FE1CB' : '#CECBF6'}
-              stroke={INK}
-              strokeWidth="1.5"
-              transform="rotate(20 48 21)"
-            />
-          </svg>
-          <span className={`${tip} left-[110px] top-0`}>{micOn ? 'listening…' : 'click to talk'}</span>
+          <span
+            className={`pointer-events-none absolute -top-2 left-[150px] z-20 whitespace-nowrap rounded-xl rounded-bl-sm border-[1.5px] border-ink bg-win px-3 py-1 font-mono text-[13px] text-ink transition-opacity ${
+              buddy ? 'opacity-100' : 'opacity-0'
+            }`}
+            aria-live="polite"
+          >
+            {buddy ?? ''}
+          </span>
+          <span className={`${tip} -top-2 left-[150px] ${buddy ? 'hidden' : ''}`}>click me</span>
         </button>
 
-        {/* headphones: hang from a hook, swing, play on click */}
+        {/* headphones: notes float up, the label opens below (away from the pc) */}
         <span className={`${line} bg-win`} style={box(1046, 330, 16, 26, { borderRadius: 3 })} />
         <button
           type="button"
           onClick={playMusic}
-          aria-label="Headphones, click to see what I code to"
+          aria-label="Headphones"
           className={`hang group ${music ? 'go' : ''}`}
           style={box(1010, 350, 90, 120)}
         >
@@ -406,13 +435,25 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
                 {n}
               </span>
             ))}
-          <span className={`${tip} -bottom-7 right-0`}>{music ? 'now playing: lo-fi to debug to' : 'click me'}</span>
+          <span
+            className={`pointer-events-none absolute left-0 top-[122px] z-20 whitespace-nowrap rounded-md bg-ink px-2 py-0.5 font-mono text-[13px] text-win transition-opacity ${
+              music ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+          >
+            {music ? 'lo-fi to debug to' : 'click me'}
+          </span>
         </button>
 
-        {/* keyboard: keys press on hover */}
-        <div className="kbd" style={box(320, 610, 210, 30)} aria-hidden="true">
-          <span className={`${line} absolute inset-x-0 bottom-0 top-[8px] rounded-[6px_6px_3px_3px] bg-win`} />
-          <span className="absolute inset-x-[10px] top-0 flex h-[14px] gap-[3px]">
+        {/* keyboard: click for disco */}
+        <button
+          type="button"
+          onClick={startDisco}
+          aria-label="Keyboard, click for disco mode"
+          className={`kbd group ${disco ? 'disco' : ''}`}
+          style={box(320, 600, 210, 40)}
+        >
+          <span className={`${line} absolute inset-x-0 bottom-0 top-[18px] rounded-[6px_6px_3px_3px] bg-win`} />
+          <span className="absolute inset-x-[10px] top-[10px] flex h-[14px] gap-[3px]">
             {Array.from({ length: 12 }, (_, i) => (
               <span
                 key={i}
@@ -426,7 +467,8 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
               />
             ))}
           </span>
-        </div>
+          <span className={`${tip} -top-7 left-0`}>{disco ? 'disco mode' : 'click for disco'}</span>
+        </button>
         <span className={`${line} bg-win`} style={box(760, 622, 26, 18, { borderRadius: '13px 13px 5px 5px' })} />
 
         {/* </> mug */}
@@ -443,26 +485,27 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <span className={`${tip} -top-14 left-0`}>fuel: chai</span>
         </div>
 
-        {/* left drawer: fun facts */}
+        {/* left drawer: today's tech fact */}
         <div className="bg-ink/40" style={box(40, 684, 380, 14, { borderRadius: 6 })} aria-hidden="true" />
         <button
           type="button"
           onClick={openFact}
-          aria-label="Drawer of fun facts"
+          aria-label="Drawer with today's tech fact"
           className="text-left"
-          style={box(40, 684, 380, 74, { translate: fact !== null ? '0 10px' : '0 0', transition: 'translate .3s cubic-bezier(.3,1.4,.5,1)' })}
+          style={box(40, 684, 380, 74, { translate: fact ? '0 10px' : '0 0', transition: 'translate .3s cubic-bezier(.3,1.4,.5,1)' })}
         >
           <span className={`${line} absolute inset-0 rounded-lg bg-peach`} />
-          {fact === null ? (
+          {fact ? (
+            <span className="rise absolute inset-0 flex flex-col justify-center px-5" aria-live="polite">
+              <span className="font-mono text-[11px] text-sub">today’s tech fact · new one tomorrow</span>
+              <span className="mt-1 font-mono text-[13px] leading-snug text-ink">{fact}</span>
+            </span>
+          ) : (
             <>
-              <span className="absolute left-4 top-3 font-mono text-[13px] text-sub">fun_facts/</span>
+              <span className="absolute left-4 top-3 font-mono text-[13px] text-sub">tech_fact.today</span>
               <span className={`${line} absolute left-1/2 top-1/2 h-3 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-win`} />
               <span className="absolute bottom-2.5 right-4 font-mono text-[12px] text-sub">pull ↓</span>
             </>
-          ) : (
-            <span key={fact} className="rise absolute inset-0 flex items-center px-5 font-mono text-[14px] leading-snug text-ink" aria-live="polite">
-              {FACTS[fact]}
-            </span>
           )}
         </button>
 
@@ -488,20 +531,35 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         </button>
       </Stage>
 
-      {/* running a model dims the room */}
-      <div className="pointer-events-none absolute inset-0 bg-[rgb(20_16_44/0.5)] transition-opacity duration-500" style={{ opacity: running ? 1 : 0 }} />
+      {/* running a model dims the room; disco dims it a little */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-[rgb(20_16_44/0.5)] transition-opacity duration-500"
+        style={{ opacity: running ? 1 : disco ? 0.55 : 0 }}
+      />
+
+      {/* disco spotlights */}
+      {disco > 0 && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          {SPOTS.map((sp) => (
+            <span
+              key={sp.c}
+              className="spot absolute size-[45vmin] rounded-full"
+              style={{ background: sp.c, left: sp.l, top: sp.t, opacity: 0.35, animationDelay: sp.d }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* front: glow, the PC, the duck and the AI box */}
       <Stage s={s} front>
         <svg style={box(36, 232, 250, 196)} viewBox="0 0 140 110" aria-hidden="true">
-          <g style={{ opacity: running ? 0.55 : 0, transition: 'opacity 0.5s' }}>
+          <g style={{ opacity: running || disco ? 0.55 : 0, transition: 'opacity 0.5s' }}>
             {HEX_GLOW.map(([cx, cy, r], i) => (
               <circle key={i} cx={cx} cy={cy} r={r} fill={HEX_COLORS[hex[i] % HEX_COLORS.length]} />
             ))}
           </g>
         </svg>
 
-        {/* the PC: 398 screen + 56 neck + 20 foot = rests exactly on the desk */}
         <div className="pointer-events-auto" style={box(300, 166, 680, 474)}>
           <div className={`${line} h-[398px] rounded-[20px] bg-win p-[18px]`}>
             <div data-screen className={`${line} h-full overflow-hidden rounded-lg bg-win`}>
@@ -511,7 +569,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <div className="mx-auto h-14 w-14 border-x-[1.5px] border-ink bg-win" />
           <div className={`${line} mx-auto h-5 w-[200px] rounded-t-md bg-win`} />
 
-          {/* rubber duck */}
           <button type="button" onClick={ducky} aria-label="Rubber duck" className="absolute -top-[42px] right-10" style={{ width: 52, height: 44 }}>
             <svg className="wobble" width="52" height="44" viewBox="0 0 30 26" aria-hidden="true">
               <ellipse cx="14" cy="18" rx="12" ry="7" fill="#FAC775" stroke={INK} strokeWidth="1.3" />
@@ -530,7 +587,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           </button>
         </div>
 
-        {/* mini AI box: click to run a model (the room's night mode) */}
         <button
           type="button"
           onClick={onRun}

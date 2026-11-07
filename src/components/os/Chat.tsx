@@ -81,19 +81,26 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onS
     started.current = true;
     reduce.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let seen = false;
+    let introPlayed = false;
     try {
       seen = sessionStorage.getItem(CHAT_KEY) === '1';
+      introPlayed = sessionStorage.getItem('sameen-intro-played') === '1';
       sessionStorage.setItem(CHAT_KEY, '1');
     } catch {}
     fast.current = seen || reduce.current;
 
-    bot(<>hi! i'm <span className="font-medium">sameen</span>.</>);
-    bot(
-      <>
-        i build AI that <em className="font-serif text-[1.15em]">talks back</em>: voice agents and RAG pipelines.
-      </>,
-    );
-    bot(`my work is in the folders ${hint}`, () => {
+    if (introPlayed) {
+      // the terminal already introduced me, so don't repeat it
+      bot('glad you made it in.');
+    } else {
+      bot(<>hi! i'm <span className="font-medium">sameen</span>.</>);
+      bot(
+        <>
+          i build AI that <em className="font-serif text-[1.15em]">talks back</em>: voice agents and RAG pipelines.
+        </>,
+      );
+    }
+    bot(`my work is in the folders ${hint}, or ask me something.`, () => {
       fast.current = reduce.current;
       setChipsOn(true);
     });
@@ -119,9 +126,10 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onS
         </>,
         () => point('resume'),
       ),
-    'fun fact': () =>
-      bot("i've won a debate competition and a public speaking prize. i can out-talk my own voice agent.", () =>
-        point('hobbies'),
+    'what are you best at?': () =>
+      bot(
+        "building AI that works in real time: RAG pipelines, voice agents, and the backends under them. that's what i shipped at Blostem.",
+        () => point('internships'),
       ),
   };
 

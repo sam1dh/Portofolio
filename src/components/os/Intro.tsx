@@ -7,13 +7,11 @@ const TOKENS: { t: string; em?: boolean }[] = [
   { t: 'hi,' },
   { t: " i'm " },
   { t: 'sameen', em: true },
-  { t: '. i' },
-  { t: ' build' },
-  { t: ' AI' },
-  { t: ' that ' },
-  { t: 'talks', em: true },
-  { t: ' ' },
-  { t: 'back', em: true },
+  { t: '.' },
+  { t: ' welcome' },
+  { t: ' to' },
+  { t: ' my ' },
+  { t: 'lab', em: true },
   { t: '.' },
 ];
 
@@ -98,6 +96,9 @@ export default function Intro({ onDone }: { onDone: () => void }) {
   const finish = useCallback(() => {
     if (finished.current) return;
     finished.current = true;
+    try {
+      sessionStorage.setItem('sameen-intro-played', '1');
+    } catch {}
     stopped.current = true;
     setLeaving(true);
 
@@ -200,7 +201,7 @@ export default function Intro({ onDone }: { onDone: () => void }) {
       if (!ok()) return;
       add(
         <div className="pl-4">
-          <Check /> <Hi>done</Hi> <Dim>· 14 tokens · 41 tok/s · 0.34s</Dim>
+          <Check /> <Hi>done</Hi> <Dim>· 9 tokens · 41 tok/s · 0.21s</Dim>
         </div>,
       );
 
