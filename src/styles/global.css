@@ -217,8 +217,8 @@
   to { height: var(--h); }
 }
 @keyframes eq-idle {
-  from { height: 14%; }
-  to { height: 34%; }
+  from { height: 16%; }
+  to { height: var(--ih); }
 }
 @keyframes blink {
   0%, 60% { opacity: 1; }
