@@ -32,6 +32,8 @@ const BARS = Array.from({ length: 22 }, (_, i) => ({
   c: BAR_COLORS[i % BAR_COLORS.length],
   d: `${(0.3 + ((i * 7) % 5) * 0.08).toFixed(2)}s`,
   h: `${50 + ((i * 37) % 50)}%`,
+  id: `${(2.2 + ((i * 5) % 9) * 0.22).toFixed(2)}s`,
+  idly: `${(i % 7) * 0.31}s`,
 }));
 
 // acoustic foam panels behind everything
@@ -161,7 +163,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
               <i
                 key={i}
                 className="bar flex-1 rounded-t-[3px]"
-                style={{ background: b.c, height: '14%', '--d': b.d, '--h': b.h } as CSSProperties}
+                style={{ background: b.c, height: '14%', '--d': b.d, '--h': b.h, '--id': b.id, '--idly': b.idly } as CSSProperties}
               />
             ))}
           </div>

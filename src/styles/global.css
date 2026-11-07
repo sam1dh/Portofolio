@@ -216,6 +216,10 @@
   from { height: 16%; }
   to { height: var(--h); }
 }
+@keyframes eq-idle {
+  from { height: 14%; }
+  to { height: 34%; }
+}
 @keyframes blink {
   0%, 60% { opacity: 1; }
   70%, 100% { opacity: 0.25; }
@@ -225,9 +229,10 @@
   50% { opacity: 1; }
 }
 .talking .bar { animation: eq var(--d) ease-in-out infinite alternate; }
+.bar { animation: eq-idle var(--id) ease-in-out var(--idly) infinite alternate; }
 .blink { animation: blink 1.4s infinite; }
 .vent-on { animation: vent 1s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .talking .bar, .blink, .vent-on { animation: none; }
+  .talking .bar, .bar, .blink, .vent-on { animation: none; }
 }
