@@ -30,7 +30,7 @@ const ICONS: { id: FolderId; label: string; href: string; tint: string; file?: b
 ];
 
 const SEEN_KEY = 'sameen-os-booted';
-const HOME_TITLE = 'Sameen Dhanimisetti · sameen.os';
+const HOME_TITLE = 'Sameen Dhanimisetti · sameen’s lab';
 
 const pathFor = (v: View) => (!v ? '/' : v.item ? `/${v.folder}/${v.item}` : `/${v.folder}`);
 
@@ -131,7 +131,7 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
     (v: View) => {
       if (!v) return HOME_TITLE;
       const item = v.item ? folders[v.folder].items.find((x) => x.slug === v.item) : undefined;
-      return `${item ? item.title : v.folder[0].toUpperCase() + v.folder.slice(1)} · sameen.os`;
+      return `${item ? item.title : v.folder[0].toUpperCase() + v.folder.slice(1)} · sameen’s lab`;
     },
     [folders],
   );
@@ -306,7 +306,7 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
         {/* phones and tablets: simple layout */}
         <div className="mx-auto flex w-full max-w-xl flex-col gap-4 p-3 pb-28 lg:hidden">
           <div className="grid grid-cols-4 justify-items-center gap-1 pt-2">{compact === true && icons}</div>
-          <div className="h-[60dvh] overflow-hidden rounded-win border-[1.5px] border-ink bg-win">{compact === true && chat}</div>
+          <div data-screen className="h-[60dvh] overflow-hidden rounded-win border-[1.5px] border-ink bg-win">{compact === true && chat}</div>
         </div>
 
         {view && (

@@ -20,7 +20,7 @@ export default function MenuBar() {
       className="flex items-center justify-between border-b border-ink bg-menu px-4 py-2 font-mono text-xs"
     >
       <nav className="flex gap-4">
-        <a href="/" className="font-medium">sameen.os</a>
+        <a href="/" className="font-medium">sameen’s lab</a>
         <a href="/?intro=1" className="hover:underline max-md:hidden">replay intro</a>
       </nav>
       <div className="flex items-center gap-3">

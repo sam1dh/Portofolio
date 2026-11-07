@@ -1,126 +1,267 @@
-import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
-const COLORS = ['#9FE1CB', '#B5D4F4', '#CECBF6', '#F4C0D1', '#FAC775'];
-const CAPTIONS: Record<number, string> = {
-  0: 'waking up…',
-  3: 'loading voice_ai…',
-  7: 'brewing cutting chai…',
-  11: 'ready ✓',
-};
-const SEGMENTS = 12;
-const START = 1100; // ms before the bar starts filling
-const STEP = 130; // ms per segment
-const END = START + SEGMENTS * STEP;
+const SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+// the greeting, streamed one token at a time
+const TOKENS: { t: string; em?: boolean }[] = [
+  { t: 'hi,' },
+  { t: " i'm " },
+  { t: 'sameen', em: true },
+  { t: '. i' },
+  { t: ' build' },
+  { t: ' AI' },
+  { t: ' that ' },
+  { t: 'talks', em: true },
+  { t: ' ' },
+  { t: 'back', em: true },
+  { t: '.' },
+];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const Dim = ({ children }: { children: ReactNode }) => <span className="text-[#7F77DD]">{children}</span>;
+const Hi = ({ children }: { children: ReactNode }) => <span className="text-[#FCFBFF]">{children}</span>;
+const Tag = ({ children }: { children: ReactNode }) => <span className="text-[#FAC775]">{children}</span>;
+const Check = () => <span className="text-[#5DCAA5]">✓</span>;
+const Cursor = () => <span className="caret text-[#9FE1CB]">▌</span>;
+
+function Prompt({ text, cursor }: { text: string; cursor?: boolean }) {
+  return (
+    <div>
+      <span className="text-[#5DCAA5]">~/lab ❯</span> <Hi>{text}</Hi>
+      {cursor && <Cursor />}
+    </div>
+  );
+}
+
+function Row({ label, value, note }: { label: string; value: ReactNode; note?: string }) {
+  return (
+    <div className="pl-4">
+      <Check /> <Dim>{label.padEnd(8, ' ')}</Dim>
+      {value}
+      {note && (
+        <>
+          {' '}
+          <Dim>{note}</Dim>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Spinner({ k }: { k: number }) {
+  return (
+    <div className="pl-4">
+      <span className="text-[#ED93B1]">{SPIN[k % SPIN.length]}</span> <Dim>resolving model…</Dim>
+    </div>
+  );
+}
+
+function Bar({ n }: { n: number }) {
+  return (
+    <div className="pl-4">
+      <Dim>weights </Dim>
+      <span className="text-[#ED93B1]">{'█'.repeat(n)}</span>
+      <Dim>{'░'.repeat(16 - n)}</Dim> <Hi>{Math.round((n / 16) * 100)}%</Hi>
+    </div>
+  );
+}
+
+function Output({ count, cursor }: { count: number; cursor?: boolean }) {
+  return (
+    <div className="relative my-3 ml-4 rounded-lg border border-[#534AB7] px-4 pb-3 pt-4">
+      <span className="absolute -top-2.5 left-3 bg-[#1E1A3A] px-1.5 text-[#7F77DD]">output</span>
+      <p className="whitespace-normal font-serif text-2xl leading-snug text-[#FCFBFF] lg:text-[28px]">
+        {TOKENS.slice(0, count).map((x, i) => (x.em ? <em key={i}>{x.t}</em> : <Fragment key={i}>{x.t}</Fragment>))}
+        {cursor && <Cursor />}
+      </p>
+    </div>
+  );
+}
 
 export default function Intro({ onDone }: { onDone: () => void }) {
-  const [filled, setFilled] = useState(0);
-  const [wink, setWink] = useState(false);
-  const [hideWin, setHideWin] = useState(false);
-  const [zoom, setZoom] = useState(false);
+  const [lines, setLines] = useState<{ id: number; node: ReactNode }[]>([]);
+  const [leaving, setLeaving] = useState(false);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const nid = useRef(0);
+  const stopped = useRef(false);
+  const finished = useRef(false);
 
-  useEffect(() => {
-    const timers: number[] = [];
-    const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+  const add = (node: ReactNode) => {
+    const id = nid.current++;
+    setLines((l) => [...l, { id, node }]);
+    return id;
+  };
+  const set = (id: number, node: ReactNode) => setLines((l) => l.map((x) => (x.id === id ? { ...x, node } : x)));
 
-    for (let i = 1; i <= SEGMENTS; i++) at(START + (i - 1) * STEP, () => setFilled(i));
-    at(END + 250, () => setWink(true));
-    at(END + 550, () => setWink(false));
-    at(END + 600, () => setHideWin(true));
-    at(END + 850, () => setZoom(true));
-    at(END + 1500, onDone);
+  // shrink the terminal window into the monitor (or the chat card on phones)
+  const finish = useCallback(() => {
+    if (finished.current) return;
+    finished.current = true;
+    stopped.current = true;
+    setLeaving(true);
 
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onDone();
-    window.addEventListener('keydown', onKey);
-    return () => {
-      timers.forEach(clearTimeout);
-      window.removeEventListener('keydown', onKey);
-    };
+    const shell = shellRef.current;
+    const target = Array.from(document.querySelectorAll<HTMLElement>('[data-screen]')).find((el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+
+    if (shell && target) {
+      const a = shell.getBoundingClientRect();
+      const b = target.getBoundingClientRect();
+      Object.assign(shell.style, {
+        position: 'fixed',
+        left: `${a.left}px`,
+        top: `${a.top}px`,
+        width: `${a.width}px`,
+        height: `${a.height}px`,
+        margin: '0',
+        transition: 'none',
+      });
+      shell.getBoundingClientRect(); // lock in the starting position
+      const ease = 'cubic-bezier(0.65, 0, 0.35, 1)';
+      Object.assign(shell.style, {
+        transition: `left .7s ${ease}, top .7s ${ease}, width .7s ${ease}, height .7s ${ease}, border-radius .7s ${ease}, background-color .5s .25s`,
+        left: `${b.left}px`,
+        top: `${b.top}px`,
+        width: `${b.width}px`,
+        height: `${b.height}px`,
+        borderRadius: '8px',
+        backgroundColor: '#FCFBFF',
+      });
+    }
+    setTimeout(onDone, 750);
   }, [onDone]);
 
-  const caption = Object.entries(CAPTIONS)
-    .filter(([k]) => Number(k) < Math.max(filled, 1))
-    .pop()?.[1];
+  // the script
+  useEffect(() => {
+    const ok = () => !stopped.current;
+
+    const type = async (text: string, speed: number) => {
+      const id = add(<Prompt text="" cursor />);
+      for (let i = 1; i <= text.length; i++) {
+        if (!ok()) return false;
+        set(id, <Prompt text={text.slice(0, i)} cursor />);
+        await sleep(speed);
+      }
+      set(id, <Prompt text={text} />);
+      return true;
+    };
+
+    (async () => {
+      await sleep(300);
+      if (!ok() || !(await type('run sameen --greet', 34))) return;
+
+      const s = add(null);
+      for (let k = 0; k < 7; k++) {
+        if (!ok()) return;
+        set(s, <Spinner k={k} />);
+        await sleep(80);
+      }
+      set(s, <Row label="model" value={<Hi>sameen-v2027</Hi>} note="· cs @ vit · grad 2027" />);
+
+      await sleep(130);
+      if (!ok()) return;
+      add(<Row label="device" value={<Hi>ai·box 01</Hi>} note="· pune, in" />);
+
+      await sleep(130);
+      if (!ok()) return;
+      add(
+        <Row
+          label="skills"
+          value={
+            <>
+              <Tag>voice-ai</Tag> <Dim>·</Dim> <Tag>rag</Tag> <Dim>·</Dim> <Tag>backends</Tag>
+            </>
+          }
+        />,
+      );
+
+      await sleep(140);
+      const b = add(null);
+      for (let n = 1; n <= 16; n++) {
+        if (!ok()) return;
+        set(b, <Bar n={n} />);
+        await sleep(26);
+      }
+      set(b, <Row label="weights" value={<Hi>loaded</Hi>} note="· 0.4s" />);
+
+      await sleep(140);
+      const o = add(null);
+      for (let i = 0; i <= TOKENS.length; i++) {
+        if (!ok()) return;
+        set(o, <Output count={i} cursor />);
+        await sleep(85);
+      }
+      set(o, <Output count={TOKENS.length} />);
+
+      await sleep(120);
+      if (!ok()) return;
+      add(
+        <div className="pl-4">
+          <Check /> <Hi>done</Hi> <Dim>· 14 tokens · 41 tok/s · 0.34s</Dim>
+        </div>,
+      );
+
+      await sleep(320);
+      if (!ok() || !(await type('open lab', 45))) return;
+      await sleep(260);
+      if (ok()) finish();
+    })();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === 'Escape') finish();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      stopped.current = true;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
 
   return (
-    <motion.div
+    <div
       data-intro
       role="dialog"
-      aria-label="Welcome to sameen.os"
-      className="fixed inset-0 z-[5000] grid place-items-center overflow-hidden bg-wall"
-      animate={{ opacity: zoom ? 0 : 1 }}
-      transition={{ duration: 0.4, delay: zoom ? 0.5 : 0 }}
+      aria-label="Loading sameen’s lab"
+      className={`fixed inset-0 z-[5000] grid place-items-center p-4 transition-colors duration-700 ${
+        leaving ? 'bg-transparent' : 'bg-[rgb(18_14_40/0.86)]'
+      }`}
     >
-      <button
-        onClick={onDone}
-        className="absolute right-4 top-3 font-mono text-xs text-sub hover:text-ink"
+      <div
+        ref={shellRef}
+        className="w-full max-w-[560px] overflow-hidden rounded-xl border-[1.5px] border-[#1E1A3A] bg-[#1E1A3A]"
+        style={{ animation: 'rise .35s ease backwards' }}
       >
-        skip intro →
-      </button>
-
-      <div className="flex flex-col items-center gap-5 lg:scale-[1.3]">
-        {/* the little computer */}
-        <motion.div
-          aria-hidden
-          className="flex flex-col items-center"
-          style={{ transformOrigin: '50% 41px' }}
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1, scale: zoom ? 18 : 1 }}
-          transition={zoom ? { duration: 0.9, ease: [0.7, 0, 0.3, 1] } : { duration: 0.6, ease: 'backOut' }}
+        <div
+          className={`flex items-center gap-1.5 border-b border-[#3C3489] bg-[#2C2754] px-3 py-2 font-mono text-xs text-[#AFA9EC] transition-opacity duration-200 ${
+            leaving ? 'opacity-0' : ''
+          }`}
         >
-          <div className="flex h-[100px] w-[128px] justify-center rounded-xl border border-ink bg-win pt-2.5">
-            <div className="relative h-[62px] w-[100px] rounded-md border border-ink bg-[#AFA9EC]">
-              <span className="absolute left-[34px] top-[18px] h-2.5 w-1.5 rounded-sm bg-ink" />
-              <motion.span
-                animate={{ scaleY: wink ? 0.15 : 1 }}
-                transition={{ duration: 0.12 }}
-                className="absolute right-[34px] top-[18px] h-2.5 w-1.5 rounded-sm bg-ink"
-              />
-              <span className="absolute left-6 top-[30px] h-1 w-2 rounded-full bg-[#ED93B1]" />
-              <span className="absolute right-6 top-[30px] h-1 w-2 rounded-full bg-[#ED93B1]" />
-              <span className="absolute bottom-3 left-1/2 h-[9px] w-5 -translate-x-1/2 rounded-b-full border-[1.5px] border-t-0 border-ink" />
-            </div>
-          </div>
-          <div className="h-3 w-[26px] border-x border-ink bg-win" />
-          <div className="h-2.5 w-[84px] rounded border border-ink bg-win" />
-        </motion.div>
-
-        {/* welcome window with the progress bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: hideWin ? 0 : 1, y: 0 }}
-          transition={{ duration: 0.4, delay: hideWin ? 0 : 0.5 }}
-          className="w-[260px] overflow-hidden rounded-win border border-ink bg-win"
+          <span className="size-2.5 rounded-full bg-[#F09595]" />
+          <span className="size-2.5 rounded-full bg-[#FAC775]" />
+          <span className="size-2.5 rounded-full bg-[#97C459]" />
+          <span className="mx-auto">sameen@lab: ~/lab</span>
+          <span>zsh</span>
+        </div>
+        <div
+          aria-live="polite"
+          className={`min-h-[300px] whitespace-pre-wrap px-4 py-3.5 font-mono text-[13px] leading-[1.7] text-[#E2DEFA] transition-opacity duration-200 lg:text-sm ${
+            leaving ? 'opacity-0' : ''
+          }`}
         >
-          <div className="flex items-center gap-1.5 border-b border-ink bg-titlebar px-3 py-2 font-mono text-xs">
-            <span className="size-2.5 rounded-full border border-ink bg-[#F09595]" />
-            <span className="size-2.5 rounded-full border border-ink bg-[#FAC775]" />
-            <span className="size-2.5 rounded-full border border-ink bg-[#97C459]" />
-            <span className="ml-2">welcome.app</span>
-          </div>
-          <div className="p-4">
-            <p className="font-serif text-2xl leading-none">
-              welcome to <em>sameen.os</em>
-            </p>
-            <div
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={SEGMENTS}
-              aria-valuenow={filled}
-              className="mt-2.5 flex gap-[3px] rounded-md border border-ink p-[3px]"
-            >
-              {Array.from({ length: SEGMENTS }, (_, i) => (
-                <span
-                  key={i}
-                  className="h-2.5 flex-1 rounded-[2px] transition-colors duration-150"
-                  style={{ background: i < filled ? COLORS[i % COLORS.length] : 'transparent' }}
-                />
-              ))}
-            </div>
-            <p className="mt-2 font-mono text-xs text-sub">{caption}</p>
-          </div>
-        </motion.div>
+          {lines.map((l) => (
+            <Fragment key={l.id}>{l.node}</Fragment>
+          ))}
+        </div>
       </div>
-    </motion.div>
+
+      {!leaving && (
+        <button onClick={finish} className="fixed bottom-4 right-5 font-mono text-xs text-[#AFA9EC] hover:text-white">
+          skip ↵
+        </button>
+      )}
+    </div>
   );
 }

@@ -13,7 +13,7 @@ interface Props {
 }
 
 const {
-  title = 'Sameen Dhanimisetti · sameen.os',
+  title = 'Sameen Dhanimisetti · sameen’s lab',
   description = 'AI + backend engineer building voice agents, RAG pipelines and fast backends. Final-year CS at VIT, open to 2027 roles.',
   image = '/og.png',
 } = Astro.props;
@@ -35,7 +35,7 @@ const ogImage = new URL(image, Astro.site);
 
     <!-- how your link looks when shared -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="sameen.os" />
+    <meta property="og:site_name" content="sameen’s lab" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />

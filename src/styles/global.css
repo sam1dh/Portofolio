@@ -236,3 +236,13 @@
 @media (prefers-reduced-motion: reduce) {
   .talking .bar, .bar, .blink, .vent-on { animation: none; }
 }
+
+/* cli intro cursor */
+@keyframes caret {
+  50% { opacity: 0; }
+}
+.caret { animation: caret 0.8s steps(1) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .caret { animation: none; }
+}

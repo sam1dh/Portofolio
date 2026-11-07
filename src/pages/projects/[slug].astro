@@ -16,6 +16,6 @@ const folders = await getFolders();
 const contributions = await getContributions();
 ---
 
-<Base title={`${title} · sameen.os`} description={description}>
+<Base title={`${title} · sameen’s lab`} description={description}>
   <Desktop client:load folders={folders} contributions={contributions} initial={{ folder: 'projects', item: slug }} />
 </Base>

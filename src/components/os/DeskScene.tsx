@@ -255,7 +255,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         {/* the PC: 398 screen + 56 neck + 20 foot = rests exactly on the desk */}
         <div className="pointer-events-auto" style={box(300, 166, 680, 474)}>
           <div className={`${line} h-[398px] rounded-[20px] bg-win p-[18px]`}>
-            <div className={`${line} h-full overflow-hidden rounded-lg bg-win`}>{screen}</div>
+            <div data-screen className={`${line} h-full overflow-hidden rounded-lg bg-win`}>{screen}</div>
           </div>
           <div className="mx-auto h-14 w-14 border-x-[1.5px] border-ink bg-win" />
           <div className={`${line} mx-auto h-5 w-[200px] rounded-t-md bg-win`} />
