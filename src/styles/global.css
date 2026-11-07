@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  /* lavender os palette */
+  --color-wall: #CFC8F2;
+  --color-menu: #EEEDFE;
+  --color-titlebar: #E2DEFA;
+  --color-win: #FCFBFF;
+  --color-ink: #1E1A3A;
+  --color-sub: #5A5578;
+  --color-accent: #3C3489;
+  --color-sticky: #FAC775;
+
+  /* folder + card tints */
+  --color-mint: #E1F5EE;
+  --color-sky: #E6F1FB;
+  --color-blush: #FBEAF0;
+  --color-peach: #FAEEDA;
+  --color-leaf: #EAF3DE;
+  --color-stone: #F1EFE8;
+
+  /* fonts */
+  --font-serif: "Instrument Serif", serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+
+  /* corners */
+  --radius-win: 10px;
+  --radius-screen: 14px;
+}
