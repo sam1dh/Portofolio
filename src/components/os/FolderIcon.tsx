@@ -45,8 +45,8 @@ export default function FolderIcon({ id, label, href, tint, file, lit, picked, w
         <motion.svg
           data-folder-icon={id}
           animate={controls}
-          width="28"
-          height="33"
+          width="40"
+          height="47"
           viewBox="0 0 32 38"
           aria-hidden
           className={`transition-[translate,scale] duration-150 group-hover:-translate-y-1 ${glow}`}
