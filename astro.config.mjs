@@ -8,7 +8,7 @@ import sitemap from '@astrojs/sitemap';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://portofolio.vercel.app',
+  site: 'https://sameen-portofolio.vercel.app',
   integrations: [react(), sitemap()],
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
 
