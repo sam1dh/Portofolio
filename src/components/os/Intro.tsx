@@ -58,7 +58,7 @@ export default function Intro({ onDone }: { onDone: () => void }) {
         skip intro →
       </button>
 
-      <div className="flex flex-col items-center gap-5">
+      <div className="flex flex-col items-center gap-5 lg:scale-[1.3]">
         {/* the little computer */}
         <motion.div
           aria-hidden

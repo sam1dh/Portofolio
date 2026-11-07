@@ -28,12 +28,12 @@ const { title, path, back, description } = Astro.props;
         <slot />
       </div>
     </main>
-    <div class="sticky bottom-3 flex justify-center pb-3" style="view-transition-name: dock">
+    <div class="sticky bottom-[max(12px,env(safe-area-inset-bottom))] flex justify-center pb-3" style="view-transition-name: dock">
       <Dock
         items={[
           { label: 'me', href: '/' },
-          { label: '~/projects', href: '/projects' },
-          { label: '~/work', href: '/internships' },
+          { label: '~/projects', short: 'proj', href: '/projects' },
+          { label: '~/work', short: 'work', href: '/internships' },
           { label: 'fun', href: '/hobbies' },
           { label: 'cv', href: '/resume.pdf' },
           { label: '@', href: 'mailto:sameendhanimisetti@gmail.com', primary: true },

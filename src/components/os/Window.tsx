@@ -1,13 +1,14 @@
 import { motion, useAnimationControls, useDragControls } from 'motion/react';
-import { useEffect, type ReactNode, type RefObject } from 'react';
+import { useEffect, type CSSProperties, type ReactNode, type RefObject } from 'react';
 
 type Props = {
   title: string;
-  x: number;
-  y: number;
+  x: string;
+  y: string;
   width: number;
   z: number;
   nudge: number;
+  sheet?: boolean;
   bounds: RefObject<HTMLDivElement | null>;
   isMobile: boolean;
   onFocus: () => void;
@@ -16,12 +17,11 @@ type Props = {
 };
 
 export default function Window({
-  title, x, y, width, z, nudge, bounds, isMobile, onFocus, onClose, children,
+  title, x, y, width, z, nudge, sheet, bounds, isMobile, onFocus, onClose, children,
 }: Props) {
   const drag = useDragControls();
   const pop = useAnimationControls();
 
-  // pop in on open, small bounce when reopened from the dock
   useEffect(() => {
     pop.start({
       opacity: 1,
@@ -38,8 +38,10 @@ export default function Window({
       dragMomentum={false}
       dragConstraints={bounds}
       onPointerDown={onFocus}
-      className={isMobile ? 'absolute inset-x-2 top-2' : 'absolute'}
-      style={isMobile ? { zIndex: z } : { left: x, top: y, width, zIndex: z }}
+      className={`relative w-full md:absolute md:left-[var(--x)] md:top-[var(--y)] md:w-[var(--w)] ${
+        sheet ? 'max-md:fixed max-md:inset-x-2 max-md:bottom-24 max-md:w-auto' : ''
+      }`}
+      style={{ '--x': x, '--y': y, '--w': `${width}px`, zIndex: z } as CSSProperties}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.85 }}
@@ -48,7 +50,7 @@ export default function Window({
       >
         <div
           onPointerDown={(e) => !isMobile && drag.start(e)}
-          className="flex cursor-grab touch-none select-none items-center gap-1.5 border-b border-ink bg-titlebar px-3 py-2 font-mono text-xs active:cursor-grabbing"
+          className="flex select-none items-center gap-1.5 border-b border-ink bg-titlebar px-3 py-2 font-mono text-xs md:cursor-grab md:touch-none md:active:cursor-grabbing"
         >
           <button
             aria-label={`Close ${title}`}

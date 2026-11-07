@@ -19,7 +19,7 @@ export default function FolderIcon({ label, href, tint, file, lit, wiggle = 0, v
   }, [wiggle, controls]);
 
   return (
-    <a href={href} className="group relative flex w-21 flex-col items-center gap-1.5 font-mono text-xs">
+    <a href={href} className="group relative flex w-full flex-col items-center gap-1.5 font-mono text-[11px] md:w-21 md:text-xs">
       <span
         aria-hidden
         className={`pointer-events-none absolute -left-5 top-3 text-sm text-accent transition-opacity ${

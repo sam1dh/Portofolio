@@ -16,18 +16,17 @@ export default function MenuBar() {
 
   return (
     <header
-  style={{ viewTransitionName: 'menubar' }}
-  className="flex items-center justify-between border-b border-ink bg-menu px-4 py-2 font-mono text-xs"
->
+      style={{ viewTransitionName: 'menubar' }}
+      className="flex items-center justify-between border-b border-ink bg-menu px-4 py-2 font-mono text-xs"
+    >
       <nav className="flex gap-4">
         <a href="/" className="font-medium">sameen.os</a>
-        <span>file</span>
-        <span>view</span>
+        <a href="/?intro=1" className="hover:underline max-md:hidden">replay intro</a>
       </nav>
       <div className="flex items-center gap-3">
-        <span className="hidden items-center gap-1.5 sm:flex">
+        <span className="flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-[#1D9E75]" />
-          open to 2027 roles
+          <span className="max-sm:hidden">open to 2027 roles</span>
         </span>
         <span>{now}</span>
       </div>

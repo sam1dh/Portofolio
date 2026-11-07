@@ -170,18 +170,19 @@ export default function Chat({ onHighlight, onWiggle }: Props) {
 
   return (
     <div className="flex flex-col">
-      <div ref={scroller} aria-live="polite" className="flex h-80 flex-col gap-2 overflow-y-auto p-3.5">
+      <div ref={scroller} aria-live="polite" className="flex h-[min(56vh,460px)] flex-col gap-2 overflow-y-auto p-3.5">
         <div className="mt-auto" />
-        {msgs.map((m) =>
-          m.from === 'bot' ? (
+        {msgs.map((m, i) => {
+          const showFace = msgs[i + 1]?.from !== 'bot';
+          return m.from === 'bot' ? (
             <motion.div
               key={m.id}
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               className="flex origin-bottom-left items-end gap-2"
             >
-              <Face size={26} />
-              <div className="max-w-[310px] rounded-2xl border border-ink bg-titlebar px-3 py-2 text-[13px] leading-relaxed">
+              {showFace ? <Face size={26} /> : <span className="w-[26px] shrink-0" />}
+              <div className="max-w-[80%] rounded-2xl border border-ink bg-titlebar px-3 py-2 text-[13px] leading-relaxed md:max-w-[380px]">
                 {m.typing ? (
                   <span aria-label="typing" className="flex gap-1 text-[10px]">
                     <span className="typing-dot">●</span>
@@ -200,12 +201,12 @@ export default function Chat({ onHighlight, onWiggle }: Props) {
               animate={{ opacity: 1, scale: 1 }}
               className="flex origin-bottom-right justify-end"
             >
-              <div className="max-w-[310px] rounded-2xl border border-ink bg-ink px-3 py-2 text-[13px] text-win">
+              <div className="max-w-[80%] rounded-2xl border border-ink bg-ink px-3 py-2 text-[13px] text-win md:max-w-[380px]">
                 {m.content}
               </div>
             </motion.div>
-          ),
-        )}
+          );
+        })}
       </div>
 
       <div className="flex min-h-12 flex-wrap gap-1.5 border-t border-ink px-3.5 py-2.5">
