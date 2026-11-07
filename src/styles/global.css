@@ -63,3 +63,22 @@
     display: none;
   }
 }
+
+@keyframes blink {
+  0%, 93%, 100% { scale: 1 1; }
+  96% { scale: 1 0.1; }
+}
+@keyframes typing {
+  0%, 60%, 100% { opacity: 0.25; }
+  30% { opacity: 1; }
+}
+@keyframes nudge {
+  50% { translate: -5px 0; }
+}
+.eye { animation: blink 4s infinite; }
+.typing-dot { animation: typing 1s infinite; }
+.nudge { animation: nudge 0.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .eye, .typing-dot, .nudge { animation: none; }
+}

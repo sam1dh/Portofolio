@@ -4,18 +4,27 @@ import MenuBar from './MenuBar';
 import Window from './Window';
 import FolderIcon from './FolderIcon';
 import Dock from './Dock';
-import Intro from './Intro'; // new
+import Intro from './Intro';
+import Chat, { type FolderId } from './Chat'; // new
 
 type WinId = 'welcome' | 'contact';
 type WinState = { open: boolean; z: number; nudge: number };
 
 const WINDOWS: Record<WinId, { title: string; x: number; y: number; width: number }> = {
-  welcome: { title: 'welcome.txt', x: 40, y: 32, width: 420 },
+  welcome: { title: 'sameen.chat', x: 40, y: 28, width: 470 }, // new title + width
   contact: { title: 'contact.txt', x: 220, y: 140, width: 300 },
 };
 
+// new: folder list in one place
+const FOLDER_ICONS: { id: FolderId; label: string; href: string; tint: string; file?: boolean }[] = [
+  { id: 'projects', label: 'projects/', href: '/projects', tint: 'bg-mint' },
+  { id: 'internships', label: 'internships/', href: '/internships', tint: 'bg-sky' },
+  { id: 'hobbies', label: 'hobbies/', href: '/hobbies', tint: 'bg-blush' },
+  { id: 'resume', label: 'resume.pdf', href: '/resume.pdf', tint: 'bg-stone', file: true },
+];
+
 const EMAIL = 'sameendhanimisetti@gmail.com';
-const SEEN_KEY = 'sameen-os-booted'; // new
+const SEEN_KEY = 'sameen-os-booted';
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
@@ -27,20 +36,6 @@ function useIsMobile() {
     return () => q.removeEventListener('change', update);
   }, []);
   return mobile;
-}
-
-function Welcome() {
-  return (
-    <div className="p-5">
-      <h1 className="font-serif text-4xl leading-none">
-        hi, i'm <em>sameen</em>.
-      </h1>
-      <p className="mt-2 text-sm leading-relaxed text-sub">
-        I build AI that talks back: voice agents, RAG pipelines, and the backends that keep them fast.
-      </p>
-      <p className="mt-3 font-mono text-xs text-accent">this window becomes the chat in step 4 ▌</p>
-    </div>
-  );
 }
 
 function Contact() {
@@ -74,16 +69,25 @@ function Contact() {
 export default function Desktop() {
   const deskRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const reduceMotion = useReducedMotion(); // new
-  const [intro, setIntro] = useState(true); // new
-  const [ready, setReady] = useState(false); // new
+  const reduceMotion = useReducedMotion();
+  const [intro, setIntro] = useState(true);
+  const [ready, setReady] = useState(false);
   const [top, setTop] = useState(10);
   const [wins, setWins] = useState<Record<WinId, WinState>>({
     welcome: { open: true, z: 10, nudge: 0 },
     contact: { open: false, z: 0, nudge: 0 },
   });
 
-  // new: skip the intro for returning visitors or reduced motion
+  // new: which folder the chat is pointing at, and wiggle counters
+  const [lit, setLit] = useState<FolderId | null>(null);
+  const [wiggles, setWiggles] = useState<Record<FolderId, number>>({
+    projects: 0,
+    internships: 0,
+    hobbies: 0,
+    resume: 0,
+  });
+  const wiggle = useCallback((id: FolderId) => setWiggles((w) => ({ ...w, [id]: w[id] + 1 })), []);
+
   useEffect(() => {
     let seen = false;
     try {
@@ -95,7 +99,6 @@ export default function Desktop() {
     }
   }, [reduceMotion]);
 
-  // new: called when the intro ends or is skipped
   const finishIntro = useCallback(() => {
     try {
       sessionStorage.setItem(SEEN_KEY, '1');
@@ -121,7 +124,6 @@ export default function Desktop() {
 
   const close = (id: WinId) => setWins((w) => ({ ...w, [id]: { ...w[id], open: false } }));
 
-  // new: staggered entrance for folders and dock
   const rise = (delay: number) => ({
     initial: { opacity: 0, y: 20 },
     animate: ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 },
@@ -147,16 +149,24 @@ export default function Desktop() {
                   onFocus={() => focus(id)}
                   onClose={() => close(id)}
                 >
-                  {id === 'welcome' ? <Welcome /> : <Contact />}
+                  {id === 'welcome' ? <Chat onHighlight={setLit} onWiggle={wiggle} /> : <Contact />}
                 </Window>
               ),
           )}
 
         <div className="absolute right-3 top-6 flex flex-col gap-5">
-          <motion.div {...rise(0.35)}><FolderIcon label="projects/" href="/projects" tint="bg-mint" /></motion.div>
-          <motion.div {...rise(0.46)}><FolderIcon label="internships/" href="/internships" tint="bg-sky" /></motion.div>
-          <motion.div {...rise(0.57)}><FolderIcon label="hobbies/" href="/hobbies" tint="bg-blush" /></motion.div>
-          <motion.div {...rise(0.68)}><FolderIcon label="resume.pdf" href="/resume.pdf" tint="bg-stone" file /></motion.div>
+          {FOLDER_ICONS.map((f, i) => (
+            <motion.div key={f.id} {...rise(0.35 + i * 0.11)}>
+              <FolderIcon
+                label={f.label}
+                href={f.href}
+                tint={f.tint}
+                file={f.file}
+                lit={lit === f.id}
+                wiggle={wiggles[f.id]}
+              />
+            </motion.div>
+          ))}
         </div>
 
         <div className="absolute bottom-3 left-1/2 z-[1000] -translate-x-1/2">
