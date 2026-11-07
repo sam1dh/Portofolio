@@ -30,10 +30,10 @@ const HEAT = ['#3C3489', '#534AB7', '#7F77DD', '#5DCAA5', '#9FE1CB'];
 const BAR_COLORS = ['#AFA9EC', '#9FE1CB', '#F4C0D1', '#FAC775', '#B5D4F4'];
 const BARS = Array.from({ length: 22 }, (_, i) => ({
   c: BAR_COLORS[i % BAR_COLORS.length],
-  d: `${(0.3 + ((i * 7) % 5) * 0.08).toFixed(2)}s`,
+  d: `${(0.24 + ((i * 7) % 5) * 0.07).toFixed(2)}s`,
   h: `${50 + ((i * 37) % 50)}%`,
-  id: `${(0.7 + ((i * 5) % 8) * 0.12).toFixed(2)}s`,
-  idly: `${(i % 7) * 0.23}s`,
+  id: `${(0.45 + ((i * 5) % 8) * 0.08).toFixed(2)}s`,
+  idly: `${(i % 7) * 0.19}s`,
   ih: `${38 + ((i * 29) % 42)}%`,
 }));
 
