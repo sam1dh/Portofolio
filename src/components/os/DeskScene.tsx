@@ -55,12 +55,6 @@ const HEX_GLOW = [
   [78, 84, 28],
 ];
 
-const BADGES = [
-  { id: 'sih', color: '#F4C0D1', tilt: -26, drop: 0, label: 'Smart India Hackathon · internal round winner' },
-  { id: 'snd', color: '#9FE1CB', tilt: -2, drop: 14, label: 'SanDisk hackathon · finalist' },
-  { id: 'blo', color: '#FAC775', tilt: 24, drop: 28, label: 'Blostem AI Builder · 3rd of 650+ teams' },
-];
-
 const LOCKED = [
   'nice try. this drawer is personal.',
   "still locked. it's mostly snacks.",
@@ -70,6 +64,11 @@ const LOCKED = [
 
 const BUDDY_LINES = ['hi! i guard the lab.', 'psst. projects/ is the good stuff.', 'beep boop. hire my human.'];
 const BUDDY_DUR = 1700; // lottie clip length in ms; keep in sync with public/props/buddy.json
+
+// key colors, top row of the desk keyboard (buttons 5 and 6 are the "spacebar" pair)
+const KEYS = Array.from({ length: 12 }, (_, i) =>
+  i === 5 || i === 6 ? '#FAC775' : i % 4 === 0 ? '#F4C0D1' : '#CECBF6',
+);
 
 const SPOTS = [
   { c: '#F4C0D1', l: '8%', t: '12%', d: '0s' },
@@ -127,7 +126,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const [voice, setVoice] = useState<string | null>(null);
   const [clockMode, setClockMode] = useState(0);
   const [hex, setHex] = useState([0, 1, 2, 3, 4]);
-  const [badge, setBadge] = useState<string | null>(null);
+  const [litKeys, setLitKeys] = useState<Record<number, boolean>>({});
   const [music, setMusic] = useState(0);
   const [disco, setDisco] = useState(0);
   const [fact, setFact] = useState<string | null>(null);
@@ -179,6 +178,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const timers = useRef<number[]>([]);
   const tokens = useRef({ voice: 0, music: 0, disco: 0, fact: 0, deny: 0, quack: 0, buddy: 0, buddyStop: 0 });
   const counts = useRef({ deny: 0, buddy: 0 });
+  const keyTok = useRef<Record<number, number>>({});
   const later = (key: keyof typeof tokens.current, fn: () => void, ms: number) => {
     const t = ++tokens.current[key];
     timers.current.push(
@@ -255,6 +255,21 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
     setQuack(true);
     later('quack', () => setQuack(false), 1800);
   };
+  const playKey = (i: number) => {
+    const my = (keyTok.current[i] ?? 0) + 1;
+    keyTok.current[i] = my;
+    setLitKeys((l) => ({ ...l, [i]: true }));
+    timers.current.push(
+      window.setTimeout(() => {
+        setLitKeys((l) => {
+          if (!l[i] || keyTok.current[i] !== my) return l;
+          const rest = { ...l };
+          delete rest[i];
+          return rest;
+        });
+      }, 750),
+    );
+  };
   const pokeBuddy = () => {
     setBuddy(BUDDY_LINES[counts.current.buddy++ % BUDDY_LINES.length]);
     later('buddy', () => setBuddy(null), 3000);
@@ -305,32 +320,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           </span>
           <span className={`${tip} -bottom-7 left-0`}>open my github ↗</span>
         </a>
-
-        {/* hackathon lanyards */}
-        <div style={box(306, 30, 90, 150)}>
-          <span className={`${line} absolute left-[40px] top-0 size-2.5 rounded-full bg-win`} />
-          {BADGES.map((b) => (
-            <div key={b.id} className="hang pointer-events-none absolute left-[28px] top-[8px] h-[100px] w-[34px]">
-              <div className="h-full w-full" style={{ rotate: `${b.tilt}deg`, marginTop: b.drop, transformOrigin: '50% 0' }}>
-                <span className="absolute left-1/2 top-0 h-[46px] w-[1.3px] -translate-x-1/2 bg-ink" />
-                <span
-                  onMouseEnter={() => setBadge(b.label)}
-                  onMouseLeave={() => setBadge(null)}
-                  className={`${line} pointer-events-auto absolute left-0 top-[46px] flex h-[44px] w-[34px] cursor-default flex-col items-center rounded`}
-                  style={{ background: b.color }}
-                >
-                  <span className="mt-1 h-1.5 w-3 rounded-full border border-ink bg-win" />
-                  <span className="mt-1 font-mono text-[12px] text-ink">{b.id}</span>
-                </span>
-              </div>
-            </div>
-          ))}
-          {badge && (
-            <span className="absolute left-0 top-[104px] z-20 whitespace-nowrap rounded-md bg-ink px-2 py-0.5 font-mono text-[13px] text-win">
-              {badge}
-            </span>
-          )}
-        </div>
 
         {/* voice waveform */}
         <div style={box(430, 0, 330, 160)}>
@@ -476,31 +465,29 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           </span>
         </button>
 
-        {/* keyboard: click for disco */}
-        <button
-          type="button"
-          onClick={startDisco}
-          aria-label="Keyboard, click for disco mode"
-          className={`kbd group ${disco ? 'disco' : ''}`}
-          style={box(320, 600, 210, 40)}
-        >
+        {/* keyboard: click a key to play it, click the body for disco */}
+        <div className={`kbd group ${disco ? 'disco' : ''}`} style={box(320, 600, 210, 40)}>
           <span className={`${line} absolute inset-x-0 bottom-0 top-[18px] rounded-[6px_6px_3px_3px] bg-win`} />
+          <button
+            type="button"
+            onClick={startDisco}
+            aria-label="Keyboard body, click for disco mode"
+            className="absolute inset-x-0 bottom-0 top-[20px] cursor-pointer rounded-[6px_6px_3px_3px]"
+          />
           <span className="absolute inset-x-[10px] top-[10px] flex h-[14px] gap-[3px]">
-            {Array.from({ length: 12 }, (_, i) => (
-              <span
+            {KEYS.map((c, i) => (
+              <button
                 key={i}
-                className="key flex-1 rounded-[3px] border border-ink"
-                style={
-                  {
-                    background: i === 5 || i === 6 ? '#FAC775' : i % 4 === 0 ? '#F4C0D1' : '#CECBF6',
-                    '--i': `${((i * 5) % 7) * 0.06}s`,
-                  } as CSSProperties
-                }
+                type="button"
+                onClick={() => playKey(i)}
+                aria-label={`Play key ${i + 1}`}
+                className={`key flex-1 cursor-pointer rounded-[3px] border border-ink ${litKeys[i] ? 'lit' : ''}`}
+                style={{ background: c, '--kc': c, '--i': `${((i * 5) % 7) * 0.06}s` } as CSSProperties}
               />
             ))}
           </span>
-          <span className={`${tip} -top-7 left-0`}>{disco ? 'disco mode' : 'click for disco'}</span>
-        </button>
+          <span className={`${tip} -top-7 left-0`}>{disco ? 'disco mode' : 'play the keys'}</span>
+        </div>
         <span className={`${line} bg-win`} style={box(760, 622, 26, 18, { borderRadius: '13px 13px 5px 5px' })} />
 
         {/* </> mug */}

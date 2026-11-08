@@ -315,6 +315,18 @@
   .kbd:hover .key, .wobble:hover, .colon { animation: none; }
 }
 
+/* playable keyboard keys: click a key, it pops with a glow */
+@keyframes key-pop {
+  0% { box-shadow: none; filter: none; }
+  30% { box-shadow: 0 0 16px 6px var(--kc); filter: brightness(1.4); transform: translateY(1.5px) scaleY(0.8); }
+  100% { box-shadow: 0 0 0 0 transparent; filter: none; }
+}
+.key.lit { animation: key-pop 0.75s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .key.lit { animation: none; }
+}
+
 /* disco keyboard */
 @keyframes disco-key {
   0% { background: #F4C0D1; }
