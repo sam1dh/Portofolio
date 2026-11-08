@@ -16,6 +16,7 @@ type Props = {
 };
 
 const btn = 'rounded-lg border-[1.5px] border-ink bg-win px-2.5 py-1 font-mono text-xs hover:bg-titlebar';
+const btnDark = 'rounded-lg border-[1.5px] border-ink bg-ink px-2.5 py-1 font-mono text-xs text-win hover:bg-ink';
 const tile = 'rounded-xl border-[1.5px] border-ink p-3.5';
 const label = 'mb-2 font-mono text-xs text-accent';
 
@@ -243,7 +244,7 @@ function Detail({ folder, item, onNavigate, onClose }: { folder: Folder; item: I
             )}
             <div className="mt-auto flex flex-wrap gap-2">
               {item.live && (
-                <a href={item.live} target="_blank" rel="noopener noreferrer" className={`${btn} bg-ink text-win hover:bg-ink`}>
+                <a href={item.live} target="_blank" rel="noopener noreferrer" className={btnDark}>
                   live demo ↗
                 </a>
               )}
