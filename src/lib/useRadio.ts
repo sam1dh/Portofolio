@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 export type Station = 'chill' | 'focus' | 'jazzy';
 export const STATION_LIST: Station[] = ['chill', 'focus', 'jazzy'];
 
-// jamendo search tags for each station
+// jamendo search tag for each station — must be a single word: multi-word
+// tags ("lofi chillout") always return 0 results on jamendo's api
 const TAGS: Record<Station, string> = {
-  chill: 'lofi chillout',
-  focus: 'ambient downtempo',
-  jazzy: 'jazz lounge',
+  chill: 'lofi',
+  focus: 'ambient',
+  jazzy: 'smoothjazz',
 };
 
 export type Track = {
@@ -24,51 +25,76 @@ export type Track = {
 const CLIENT_ID = import.meta.env.PUBLIC_JAMENDO_CLIENT_ID as string | undefined;
 const VOL_KEY = 'sameen-radio-vol';
 
-async function fetchStation(station: Station): Promise<Track[]> {
-  const key = `sameen-radio-${station}`;
-  try {
-    const hit = sessionStorage.getItem(key);
-    if (hit) return JSON.parse(hit);
-  } catch {}
-
+async function once(station: Station, instrumental: boolean): Promise<Track[]> {
   const params = new URLSearchParams({
     client_id: CLIENT_ID!,
     format: 'json',
     limit: '30',
     fuzzytags: TAGS[station],
-    vocalinstrumental: 'instrumental',
     audioformat: 'mp32',
     imagesize: '300',
-    groupby: 'artist_id',
-    boost: 'popularity_month',
   });
+  if (instrumental) params.set('vocalinstrumental', 'instrumental');
   const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?${params}`);
   if (!res.ok) throw new Error(String(res.status));
   const json = await res.json();
   if (json?.headers?.status !== 'success') throw new Error(json?.headers?.error_message || 'jamendo error');
+  return json.results ?? [];
+}
 
-  const list: Track[] = (json.results ?? [])
-    .filter((t: any) => t.audio)
-    .map((t: any) => ({
-      id: String(t.id),
-      title: t.name,
-      artist: t.artist_name,
-      cover: t.image || t.album_image || '',
-      audio: t.audio,
-      duration: Number(t.duration) || 0,
-      url: t.shareurl,
-      license: t.license_ccurl,
-    }));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  // shuffle so every visit feels fresh
-  for (let i = list.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [list[i], list[j]] = [list[j], list[i]];
-  }
+async function fetchStation(station: Station): Promise<Track[]> {
+  const key = `sameen-radio-${station}`;
   try {
-    sessionStorage.setItem(key, JSON.stringify(list));
+    const hit = sessionStorage.getItem(key);
+    if (hit) {
+      const l = JSON.parse(hit) as Track[];
+      // never reuse a cached empty list — a flaky api response could poison the session
+      if (Array.isArray(l) && l.length) return l;
+    }
   } catch {}
-  return list;
+
+  // jamendo's api intermittently answers an empty "success" — retry until songs come back
+  let err: unknown = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await sleep(700 * attempt);
+    // prefer instrumental; loosen the filter if a station has none
+    for (const instrumental of [true, false]) {
+      try {
+        const results = await once(station, instrumental);
+        if (!results.length) {
+          err = new Error('jamendo: empty');
+          continue;
+        }
+        const list: Track[] = results
+          .filter((t: any) => t.audio)
+          .map((t: any) => ({
+            id: String(t.id),
+            title: t.name,
+            artist: t.artist_name,
+            cover: t.image || t.album_image || '',
+            audio: t.audio,
+            duration: Number(t.duration) || 0,
+            url: t.shareurl,
+            license: t.license_ccurl,
+          }));
+
+        // shuffle so every visit feels fresh
+        for (let i = list.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [list[i], list[j]] = [list[j], list[i]];
+        }
+        try {
+          sessionStorage.setItem(key, JSON.stringify(list));
+        } catch {}
+        return list;
+      } catch (e) {
+        err = e;
+      }
+    }
+  }
+  throw err ?? new Error('jamendo: no songs');
 }
 
 export function useRadio() {
