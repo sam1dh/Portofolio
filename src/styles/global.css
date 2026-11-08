@@ -315,10 +315,10 @@
   .kbd:hover .key, .wobble:hover, .colon { animation: none; }
 }
 
-/* playable keyboard keys: click a key, it pops with a glow */
+/* playable keyboard keys: click a key, it pops with a soft glow */
 @keyframes key-pop {
   0% { box-shadow: none; filter: none; }
-  30% { box-shadow: 0 0 16px 6px var(--kc); filter: brightness(1.4); transform: translateY(1.5px) scaleY(0.8); }
+  30% { box-shadow: 0 0 9px 2px color-mix(in srgb, var(--kc) 70%, transparent); filter: brightness(1.18); transform: translateY(1.5px) scaleY(0.8); }
   100% { box-shadow: 0 0 0 0 transparent; filter: none; }
 }
 .key.lit { animation: key-pop 0.75s ease-out; }
