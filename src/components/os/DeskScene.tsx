@@ -127,7 +127,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const [clockMode, setClockMode] = useState(0);
   const [hex, setHex] = useState([0, 1, 2, 3, 4]);
   const [litKeys, setLitKeys] = useState<Record<number, boolean>>({});
-  const [music, setMusic] = useState(0);
   const [disco, setDisco] = useState(0);
   const [fact, setFact] = useState<string | null>(null);
   const [deny, setDeny] = useState<number | null>(null);
@@ -176,7 +175,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
 
   // timers, with tokens so overlapping clicks don't cut each other short
   const timers = useRef<number[]>([]);
-  const tokens = useRef({ voice: 0, music: 0, disco: 0, fact: 0, deny: 0, quack: 0, buddy: 0, buddyStop: 0 });
+  const tokens = useRef({ voice: 0, disco: 0, fact: 0, deny: 0, quack: 0, buddy: 0, buddyStop: 0 });
   const counts = useRef({ deny: 0, buddy: 0 });
   const keyTok = useRef<Record<number, number>>({});
   const later = (key: keyof typeof tokens.current, fn: () => void, ms: number) => {
@@ -234,10 +233,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const hello = () => {
     setVoice('hey there, welcome in!');
     later('voice', () => setVoice(null), 2200);
-  };
-  const playMusic = () => {
-    setMusic((m) => m + 1);
-    later('music', () => setMusic(0), 2400);
   };
   const startDisco = () => {
     setDisco((d) => d + 1);
@@ -410,59 +405,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
             {buddy ?? ''}
           </span>
           <span className={`${tip} -top-2 left-[150px] ${buddy ? 'hidden' : ''}`}>click me</span>
-        </button>
-
-        {/* sticky board: reminders on the right wall */}
-        <div style={box(1050, 156, 136, 104)} className="group cursor-default">
-          <span className={`${line} absolute inset-0 rounded-md bg-[#F6E7CD]`} />
-          {[
-            { t: 'ship it', c: '#F4C0D1', r: -5, x: 10, y: 12 },
-            { t: 'todo', c: '#9FE1CB', r: 3, x: 52, y: 18 },
-            { t: '2027', c: '#B5D4F4', r: -2, x: 94, y: 12 },
-          ].map((n) => (
-            <span
-              key={n.t}
-              className="absolute flex h-[30px] w-[30px] items-center justify-center rounded-[2px] font-mono text-[10px] text-ink shadow-[1px_2px_0_rgba(30,26,58,0.25)]"
-              style={{ left: n.x, top: n.y, background: n.c, rotate: `${n.r}deg` }}
-            >
-              {n.t}
-            </span>
-          ))}
-          <span className={`${tip} -bottom-7 left-0`}>brain overflow</span>
-        </div>
-
-        {/* headphones: notes float up, the label opens below (away from the pc) */}
-        <span className={`${line} bg-win`} style={box(1046, 330, 16, 26, { borderRadius: 3 })} />
-        <button
-          type="button"
-          onClick={playMusic}
-          aria-label="Headphones"
-          className={`hang group ${music ? 'go' : ''}`}
-          style={box(1010, 342, 90, 120)}
-        >
-          <svg width="90" height="120" viewBox="0 0 60 80" aria-hidden="true">
-            <path d="M10 42 V26 a20 20 0 0 1 40 0 V42" fill="none" stroke={INK} strokeWidth="3" />
-            <rect x="4" y="36" width="13" height="22" rx="5" fill="#ED93B1" stroke={INK} strokeWidth="1.5" />
-            <rect x="43" y="36" width="13" height="22" rx="5" fill="#ED93B1" stroke={INK} strokeWidth="1.5" />
-          </svg>
-          {music > 0 &&
-            ['♪', '♫', '♪'].map((n, i) => (
-              <span
-                key={`${music}-${i}`}
-                className="note absolute font-mono text-xl text-accent"
-                style={{ left: 14 + i * 22, top: 4, animationDelay: `${i * 0.25}s`, '--x': `${(i - 1) * 14}px` } as CSSProperties}
-                aria-hidden="true"
-              >
-                {n}
-              </span>
-            ))}
-          <span
-            className={`pointer-events-none absolute left-0 top-[122px] z-20 whitespace-nowrap rounded-md bg-ink px-2 py-0.5 font-mono text-[13px] text-win transition-opacity ${
-              music ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            }`}
-          >
-            {music ? 'lo-fi to debug to' : 'click me'}
-          </span>
         </button>
 
         {/* keyboard: click a key to play it, click the body for disco */}
