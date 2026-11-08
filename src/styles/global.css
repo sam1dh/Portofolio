@@ -291,6 +291,19 @@
 .wobble { transform-origin: 50% 100%; }
 .wobble:hover { animation: wobble 0.5s ease; }
 
+/* duck hops toward whatever the chat points at */
+@keyframes duck-hop {
+  0% { translate: 0 0; rotate: 0deg; }
+  35% { translate: 10px -16px; rotate: 10deg; }
+  65% { translate: 16px 0; rotate: 0deg; }
+  80% { translate: 16px -4px; }
+  100% { translate: 0 0; }
+}
+.duck-hop { animation: duck-hop 0.9s ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .duck-hop { animation: none; }
+}
 @keyframes colon { 50% { opacity: 0.25; } }
 .colon { animation: colon 1s steps(1) infinite; }
 

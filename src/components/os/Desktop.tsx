@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import MenuBar from './MenuBar';
 import Window from './Window';
@@ -114,7 +114,17 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
   });
   const [lit, setLit] = useState<FolderId | null>(null);
   const [wiggles, setWiggles] = useState<Record<FolderId, number>>({ projects: 0, internships: 0, hobbies: 0, resume: 0 });
-  const wiggle = useCallback((id: FolderId) => setWiggles((w) => ({ ...w, [id]: w[id] + 1 })), []);
+  const wiggle = useCallback((id: FolderId) => setWiggles((w) => ({ ...w, [id]: w[id] + 1 })), [])
+
+  // names shown as clickable pills on each tour step
+  const tourItems = useMemo(
+    () => ({
+      projects: folders.projects.items.map((i) => ({ label: i.title, slug: i.slug })),
+      internships: folders.internships.items.map((i) => ({ label: i.title, slug: i.slug })),
+      hobbies: folders.hobbies.hobbies.map((h) => ({ label: h.title })),
+    }),
+    [folders],
+  )
 
   // which folder (and item) is open
   const [view, setView] = useState<View>(initial);
@@ -261,6 +271,8 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
               }
         }
         hint={compact ? 'above ↑' : 'on the right →'}
+        onOpenFolder={(f, it) => openFolder(f, it)}
+        tourItems={tourItems}
       />
     ) : null;
 
@@ -294,6 +306,7 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
           onRun={() => setRunning((r) => !r)}
           speaking={speaking}
           contributions={contributions}
+          pointAt={lit}
           screen={compact === false ? screen : null}
         />
         </div>

@@ -18,6 +18,7 @@ type Props = {
   speaking: boolean;
   screen: ReactNode;
   contributions: Contributions;
+  pointAt?: string | null;
 };
 
 const box = (left: number, top: number, width: number, height: number, extra: CSSProperties = {}): CSSProperties => ({
@@ -114,7 +115,7 @@ function Stage({ s, front, children }: { s: number; front?: boolean; children: R
   );
 }
 
-export default function DeskScene({ running, onRun, speaking, screen, contributions }: Props) {
+export default function DeskScene({ running, onRun, speaking, screen, contributions, pointAt }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [s, setS] = useState(0);
   const [now, setNow] = useState<Date | null>(null);
@@ -132,6 +133,12 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const [deny, setDeny] = useState<number | null>(null);
   const [buddy, setBuddy] = useState<string | null>(null);
   const [buddyOk, setBuddyOk] = useState(true);
+
+  // the duck hops each time the chat points at a folder
+  const [hop, setHop] = useState(0);
+  useEffect(() => {
+    if (pointAt) setHop((h) => h + 1);
+  }, [pointAt]);
 
   // lab buddy: a lottie animation, still until clicked
   const buddyRef = useRef<HTMLDivElement>(null);
@@ -570,7 +577,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <div className={`${line} mx-auto h-5 w-[200px] rounded-t-md bg-win`} />
 
           <button type="button" onClick={ducky} aria-label="Rubber duck" className="absolute -top-[42px] right-10" style={{ width: 52, height: 44 }}>
-            <svg className="wobble" width="52" height="44" viewBox="0 0 30 26" aria-hidden="true">
+            <svg key={hop} className={`wobble ${hop ? 'duck-hop' : ''}`} width="52" height="44" viewBox="0 0 30 26" aria-hidden="true">
               <ellipse cx="14" cy="18" rx="12" ry="7" fill="#FAC775" stroke={INK} strokeWidth="1.3" />
               <circle cx="20" cy="9" r="6" fill="#FAC775" stroke={INK} strokeWidth="1.3" />
               <path d="M25 9 l5 1 -5 2z" fill="#F0997B" stroke={INK} strokeWidth="1" />

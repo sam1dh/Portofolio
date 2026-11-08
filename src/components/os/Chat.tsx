@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
+import type { FolderKey } from '../../lib/folder-types';
 
 export type FolderId = 'projects' | 'internships' | 'hobbies' | 'resume';
 
@@ -10,14 +11,93 @@ type Props = {
   onClose?: () => void;
   onSpeaking?: (talking: boolean) => void;
   hint: string;
+  onOpenFolder: (folder: FolderKey, item?: string) => void;
+  tourItems: Record<FolderKey, { label: string; slug?: string }[]>;
 };
 
-type Msg = { id: number; from: 'bot' | 'me'; content?: ReactNode; typing?: boolean };
+type Msg = { id: number; from: 'bot' | 'me'; content?: ReactNode; typing?: boolean; wide?: boolean };
 
 const CHAT_KEY = 'sameen-chat-seen';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onSpeaking, hint }: Props) {
+const TOUR: { id: FolderKey; label: string; text: string }[] = [
+  { id: 'projects', label: 'projects/', text: 'two builds, one placed 3rd of 650+ teams.' },
+  { id: 'internships', label: 'internships/', text: 'three internships, up to production voice AI.' },
+  { id: 'hobbies', label: 'hobbies/', text: 'debate, public speaking and hackathons.' },
+];
+
+// one card that updates in place instead of posting a message per step
+function TourCard({
+  items,
+  onStep,
+  onOpen,
+}: {
+  items: Record<FolderKey, { label: string; slug?: string }[]>;
+  onStep: (id: FolderKey | null) => void;
+  onOpen: (folder: FolderKey, item?: string) => void;
+}) {
+  const [i, setI] = useState(0);
+  const done = i >= TOUR.length;
+
+  useEffect(() => {
+    onStep(done ? null : TOUR[i].id);
+  }, [i]);
+
+  const btn = 'rounded-lg border border-ink px-2.5 py-1 font-mono text-xs';
+
+  if (done) {
+    return (
+      <div>
+        <p className="font-mono text-xs text-[#0F6E56]">✓ tour done</p>
+        <p className="mt-1 text-sm">pick a folder, or ask me something else.</p>
+      </div>
+    );
+  }
+
+  const s = TOUR[i];
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="font-mono text-xs text-sub">tour · {i + 1}/{TOUR.length}</span>
+        <span className="h-1 flex-1 overflow-hidden rounded-full bg-titlebar">
+          <span
+            className="block h-full rounded-full bg-[#5DCAA5] transition-[width] duration-300"
+            style={{ width: `${((i + 1) / TOUR.length) * 100}%` }}
+          />
+        </span>
+      </div>
+      <p className="text-sm leading-snug">
+        <b className="font-medium">{s.label}</b> {s.text}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {items[s.id].map((it) => (
+          <button
+            key={it.label}
+            onClick={() => onOpen(s.id, it.slug)}
+            className="rounded-full border border-ink bg-menu px-2 py-0.5 font-mono text-[11px] hover:bg-titlebar"
+          >
+            {it.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button onClick={() => onOpen(s.id)} className={`${btn} bg-ink text-win`}>
+          open {s.label} ↗
+        </button>
+        {i > 0 && (
+          <button onClick={() => setI(i - 1)} className={`${btn} bg-win hover:bg-titlebar`}>
+            back
+          </button>
+        )}
+        <button onClick={() => setI(i + 1)} className={`${btn} ml-auto bg-win hover:bg-titlebar`}>
+          {i === TOUR.length - 1 ? 'finish' : 'next →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onSpeaking, onOpenFolder, tourItems, hint }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chipsOn, setChipsOn] = useState(false);
   const [used, setUsed] = useState<string[]>([]);
@@ -44,23 +124,20 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onS
   }, [msgs]);
 
   // bot messages run one after another, each with a short "typing…" moment
-  const bot = (content: ReactNode, after?: () => void, pause = 400) => {
+  const bot = (content: ReactNode, after?: () => void, pause = 400, wide = false) => {
     queue.current = queue.current.then(async () => {
       if (!alive.current) return;
       const id = nextId.current++;
       if (fast.current) {
-        speak.current?.(true);
-        setMsgs((m) => [...m, { id, from: 'bot', content }]);
+        setMsgs((m) => [...m, { id, from: 'bot', content, wide }]);
         after?.();
-        // even on instant replay, let the room's waveform react briefly
-        setTimeout(() => speak.current?.(false), 900);
         return;
       }
       speak.current?.(true);
       setMsgs((m) => [...m, { id, from: 'bot', typing: true }]);
       await sleep(550);
       if (!alive.current) return;
-      setMsgs((m) => m.map((x) => (x.id === id ? { ...x, typing: false, content } : x)));
+      setMsgs((m) => m.map((x) => (x.id === id ? { ...x, typing: false, content, wide } : x)));
       after?.();
       await sleep(250);
       speak.current?.(false);
@@ -107,12 +184,13 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onS
   }, []);
 
   const ANSWERS: Record<string, () => void> = {
-    'give me a tour': () => {
-      bot(<>first: <b className="font-medium">projects/</b>. two builds, one placed 3rd of 650+ teams.</>, () => point('projects'), 1100);
-      bot(<>next: <b className="font-medium">internships/</b>. three of them, up to production voice AI.</>, () => point('internships'), 1100);
-      bot(<>last: <b className="font-medium">hobbies/</b>. debate, public speaking and hackathons.</>, () => point('hobbies'), 1100);
-      bot('pick a folder and dive in.', () => onHighlight(null));
-    },
+    'give me a tour': () =>
+      bot(
+        <TourCard items={tourItems} onOpen={onOpenFolder} onStep={(id) => (id ? point(id) : onHighlight(null))} />,
+        undefined,
+        400,
+        true,
+      ),
     "i'm a recruiter": () =>
       bot(
         <>
@@ -177,10 +255,12 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onS
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className={
-              m.from === 'bot'
-                ? 'max-w-[75%] origin-bottom-left self-start rounded-2xl border border-ink bg-titlebar px-3.5 py-2 text-[15px] leading-snug'
-                : 'max-w-[75%] origin-bottom-right self-end rounded-2xl border border-ink bg-ink px-3.5 py-2 text-[15px] leading-snug text-win'
-            }
+  m.from === 'me'
+    ? 'max-w-[75%] origin-bottom-right self-end rounded-2xl border border-ink bg-ink px-3.5 py-2 text-[15px] leading-snug text-win'
+    : m.wide && !m.typing
+      ? 'w-full max-w-[92%] origin-bottom-left self-start rounded-2xl border border-ink bg-win px-3.5 py-3'
+      : 'max-w-[75%] origin-bottom-left self-start rounded-2xl border border-ink bg-titlebar px-3.5 py-2 text-[15px] leading-snug'
+}
           >
             {m.typing ? (
               <span aria-label="typing" className="flex gap-1 text-[10px]">
