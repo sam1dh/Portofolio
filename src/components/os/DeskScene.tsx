@@ -56,9 +56,9 @@ const HEX_GLOW = [
 ];
 
 const BADGES = [
-  { id: 'sih', color: '#F4C0D1', tilt: -18, label: 'Smart India Hackathon · internal round winner' },
-  { id: 'snd', color: '#9FE1CB', tilt: 0, label: 'SanDisk hackathon · finalist' },
-  { id: 'blo', color: '#FAC775', tilt: 16, label: 'Blostem AI Builder · 3rd of 650+ teams' },
+  { id: 'sih', color: '#F4C0D1', tilt: -26, drop: 0, label: 'Smart India Hackathon · internal round winner' },
+  { id: 'snd', color: '#9FE1CB', tilt: -2, drop: 14, label: 'SanDisk hackathon · finalist' },
+  { id: 'blo', color: '#FAC775', tilt: 24, drop: 28, label: 'Blostem AI Builder · 3rd of 650+ teams' },
 ];
 
 const LOCKED = [
@@ -163,6 +163,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         });
         anim.current.goToAndStop(0, true);
         setBuddyReady(true);
+        // END TEMP PROBE
       } catch {
         if (!cancelled) setBuddyOk(false);
       }
@@ -310,7 +311,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <span className={`${line} absolute left-[40px] top-0 size-2.5 rounded-full bg-win`} />
           {BADGES.map((b) => (
             <div key={b.id} className="hang pointer-events-none absolute left-[28px] top-[8px] h-[100px] w-[34px]">
-              <div className="h-full w-full" style={{ rotate: `${b.tilt}deg`, transformOrigin: '50% 0' }}>
+              <div className="h-full w-full" style={{ rotate: `${b.tilt}deg`, marginTop: b.drop, transformOrigin: '50% 0' }}>
                 <span className="absolute left-1/2 top-0 h-[46px] w-[1.3px] -translate-x-1/2 bg-ink" />
                 <span
                   onMouseEnter={() => setBadge(b.label)}
@@ -393,11 +394,15 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           </g>
         </svg>
 
-        {/* lab buddy: the lottie stays still until you click it, then waves with a speech bubble */}
-        <button type="button" onClick={pokeBuddy} aria-label="Lab buddy, click to say hi" className="group" style={box(70, 440, 200, 200)}>
+        {/* lab buddy: the lottie stays still until you click it, then waves with a speech bubble.
+            real art bbox (from the svg, probed in-browser): x 3.5-418, y 21-474 of a 512 frame.
+            sized S=195 so he stands 172px tall, feet exactly on the desk line (640). */}
+        <button type="button" onClick={pokeBuddy} aria-label="Lab buddy, click to say hi" className="group" style={box(60, 460, 170, 180)}>
+          <span className="pointer-events-none absolute -bottom-[4px] left-6 h-2 w-[120px] rounded-full bg-ink/15 blur-[2px]" aria-hidden="true" />
           <div
             ref={buddyRef}
-            className={`absolute inset-0 transition-transform duration-200 group-hover:-translate-y-1 ${buddyReady ? '' : 'hidden'}`}
+            className={`pointer-events-none absolute left-[5px] top-0 transition-transform duration-200 group-hover:-translate-y-1 ${buddyReady ? '' : 'hidden'}`}
+            style={{ width: 195, height: 195 }}
           />
           {!buddyReady &&
             buddyOk && (
@@ -418,6 +423,25 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <span className={`${tip} -top-2 left-[150px] ${buddy ? 'hidden' : ''}`}>click me</span>
         </button>
 
+        {/* sticky board: reminders on the right wall */}
+        <div style={box(1050, 156, 136, 104)} className="group cursor-default">
+          <span className={`${line} absolute inset-0 rounded-md bg-[#F6E7CD]`} />
+          {[
+            { t: 'ship it', c: '#F4C0D1', r: -5, x: 10, y: 12 },
+            { t: 'todo', c: '#9FE1CB', r: 3, x: 52, y: 18 },
+            { t: '2027', c: '#B5D4F4', r: -2, x: 94, y: 12 },
+          ].map((n) => (
+            <span
+              key={n.t}
+              className="absolute flex h-[30px] w-[30px] items-center justify-center rounded-[2px] font-mono text-[10px] text-ink shadow-[1px_2px_0_rgba(30,26,58,0.25)]"
+              style={{ left: n.x, top: n.y, background: n.c, rotate: `${n.r}deg` }}
+            >
+              {n.t}
+            </span>
+          ))}
+          <span className={`${tip} -bottom-7 left-0`}>brain overflow</span>
+        </div>
+
         {/* headphones: notes float up, the label opens below (away from the pc) */}
         <span className={`${line} bg-win`} style={box(1046, 330, 16, 26, { borderRadius: 3 })} />
         <button
@@ -425,7 +449,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           onClick={playMusic}
           aria-label="Headphones"
           className={`hang group ${music ? 'go' : ''}`}
-          style={box(1010, 350, 90, 120)}
+          style={box(1010, 342, 90, 120)}
         >
           <svg width="90" height="120" viewBox="0 0 60 80" aria-hidden="true">
             <path d="M10 42 V26 a20 20 0 0 1 40 0 V42" fill="none" stroke={INK} strokeWidth="3" />
@@ -574,15 +598,18 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
               {screen}
             </div>
           </div>
-          <div className="mx-auto h-14 w-14 border-x-[1.5px] border-ink bg-win" />
-          <div className={`${line} mx-auto h-5 w-[200px] rounded-t-md bg-win`} />
+          <div className="mx-auto h-14 w-10 border-x-[1.5px] border-ink bg-win" />
+          <div className={`${line} mx-auto h-5 w-[170px] rounded-t-md bg-win`} />
+
+          {/* perch shadow so the duck sits on the bezel, not in mid-air */}
+          <span className="pointer-events-none absolute -top-1 right-[52px] h-[5px] w-[42px] rounded-full bg-ink/15 blur-[1px]" aria-hidden="true" />
 
           <button
             type="button"
             data-duck
             onClick={ducky}
             aria-label="Rubber duck"
-            className="absolute -top-[42px] right-10"
+            className="absolute -top-[44px] right-10"
             style={{ width: 52, height: 44, visibility: duckAway ? 'hidden' : 'visible' }}
           >
             <svg key={hop} className={`wobble ${hop ? 'duck-hop' : ''}`} width="52" height="44" viewBox="0 0 30 26" aria-hidden="true">
