@@ -579,8 +579,8 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           </g>
         </svg>
 
-        <div className="pointer-events-auto" style={box(300, 166, 680, 474)}>
-          <div className={`${line} h-[398px] rounded-[20px] bg-win p-[18px]`}>
+        <div className="pointer-events-none" style={box(300, 166, 680, 474)}>
+          <div className={`${line} pointer-events-auto h-[398px] rounded-[20px] bg-win p-[18px]`}>
             <div data-screen className={`${line} h-full overflow-hidden rounded-lg bg-win`}>
               {screen}
             </div>
@@ -596,7 +596,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
             data-duck
             onClick={ducky}
             aria-label="Rubber duck"
-            className="absolute -top-[44px] right-10"
+            className="pointer-events-auto absolute -top-[44px] right-10"
             style={{ width: 52, height: 44, visibility: duckAway ? 'hidden' : 'visible' }}
           >
             <svg key={hop} className={`wobble ${hop ? 'duck-hop' : ''}`} width="52" height="44" viewBox="0 0 30 26" aria-hidden="true">
