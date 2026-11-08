@@ -9,7 +9,6 @@ import Intro from './Intro';
 import Chat, { type FolderId } from './Chat';
 import Resume from './Resume';
 import DeskScene from './DeskScene';
-import { RadioPanel } from './Turntable';
 import { useRadio } from '../../lib/useRadio';
 import PaperFolder from './PaperFolder';
 import type { FolderKey, Folders } from '../../lib/folder-types';
@@ -328,11 +327,6 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
         <div className="mx-auto flex w-full max-w-xl flex-col gap-4 p-3 pb-28 lg:hidden">
           <div className="grid grid-cols-4 justify-items-center gap-1 pt-2">{compact === true && icons}</div>
           <div data-screen className="h-[60dvh] overflow-hidden rounded-win border-[1.5px] border-ink bg-win">{compact === true && chat}</div>
-          {compact === true && (
-            <div className="mt-3">
-              <RadioPanel radio={radio} />
-            </div>
-          )}
         </div>
 
         {touring && (
