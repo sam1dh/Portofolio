@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import type { Contributions } from '../../lib/github';
 import type { AnimationItem } from 'lottie-web';
+import type { Radio } from '../../lib/useRadio';
 import { SITE } from '../../data/site';
 import { factForToday } from '../../data/tech-facts';
+import { RadioPanel, TurntableDeck } from './Turntable';
 
 const W = 1280; // design width
 const H = 800; // design height
@@ -18,6 +20,7 @@ type Props = {
   speaking: boolean;
   screen: ReactNode;
   contributions: Contributions;
+  radio: Radio;
   pointAt?: string | null;
   duckAway?: boolean;
 };
@@ -76,33 +79,62 @@ const SPOTS = [
   { c: '#FAC775', l: '28%', t: '40%', d: '0.8s' },
 ];
 
-// acoustic foam panels behind everything
-const FOAM =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Crect x='1' y='1' width='54' height='54' rx='3' fill='%23C7BFEE' stroke='%23B4ACE8' stroke-width='1.5'/%3E%3Cpath d='M1 12h54M1 24h54M1 36h54M1 48h54' stroke='%23BBB3EB' stroke-width='2'/%3E%3C/svg%3E\")";
-
 const pad = (n: number) => String(n).padStart(2, '0');
 
-function puneParts(d: Date) {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Kolkata',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(d);
-  const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0) % 24;
-  const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
-  return { h, m };
+/* ---------- time of day (the visitor's own clock) ---------- */
+
+type Phase = 'dawn' | 'morning' | 'afternoon' | 'evening' | 'night';
+
+function phaseOf(h: number): Phase {
+  if (h >= 5 && h < 7) return 'dawn';
+  if (h >= 7 && h < 12) return 'morning';
+  if (h >= 12 && h < 17) return 'afternoon';
+  if (h >= 17 && h < 19) return 'evening';
+  return 'night';
 }
 
-function status(h: number) {
-  if (h < 6) return 'asleep (probably)';
-  if (h < 9) return 'chai + inbox';
-  if (h < 13) return 'deep work';
-  if (h < 14) return 'lunch break';
-  if (h < 19) return 'shipping things';
-  if (h < 23) return 'side projects';
-  return 'one more commit';
+const PHASES: Record<Phase, { aura: string[]; base: string; sky: string; horizon: string; tint: string; stars: number }> = {
+  dawn: { aura: ['#F4C0D1', '#FAEEDA', '#CECBF6'], base: '#E9DDF0', sky: '#F4C0D1', horizon: '#CBE6DC', tint: 'rgb(244 192 209 / 0.14)', stars: 0.35 },
+  morning: { aura: ['#FAEEDA', '#B5D4F4', '#CECBF6'], base: '#E6E4F7', sky: '#B5D4F4', horizon: '#9FE1CB', tint: 'rgb(250 199 117 / 0.06)', stars: 0 },
+  afternoon: { aura: ['#B5D4F4', '#CECBF6', '#9FE1CB'], base: '#DFDDF7', sky: '#85B7EB', horizon: '#9FE1CB', tint: 'transparent', stars: 0 },
+  evening: { aura: ['#F0997B', '#ED93B1', '#AFA9EC'], base: '#EAD3E4', sky: '#F0997B', horizon: '#AFA9EC', tint: 'rgb(240 153 123 / 0.18)', stars: 0 },
+  night: { aura: ['#26215C', '#26215C', '#26215C'], base: '#1B1838', sky: '#26215C', horizon: '#3C3489', tint: 'rgb(20 16 44 / 0.12)', stars: 1 },
+};
+
+// where the sun (or moon) sits: x from left to right, y from top (0) to horizon (1)
+function skyBody(d: Date | null) {
+  if (!d) return { x: 0.5, y: 0, moon: false };
+  const t = d.getHours() + d.getMinutes() / 60;
+  const day = t >= 5.5 && t < 19;
+  const f = day ? (t - 5.5) / 13.5 : ((t - 19 + 24) % 24) / 10.5;
+  return { x: f, y: 1 - Math.sin(Math.PI * f), moon: !day };
 }
+
+// a fixed starfield so every visitor sees the same sky
+let seed = 11;
+const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+const STARS = Array.from({ length: 140 }, () => ({
+  l: rnd() * 100,
+  t: rnd() * 80,
+  s: rnd() < 0.15 ? 2.5 : 1.4,
+  d: 1.5 + rnd() * 3,
+  delay: rnd() * 3,
+}));
+const WINDOW_STARS = [
+  [14, 14],
+  [44, 34],
+  [80, 16],
+  [118, 38],
+  [28, 66],
+  [96, 72],
+  [140, 22],
+];
+
+const AURA_SPOTS = [
+  { l: '-5%', t: '-8%', w: '45%', h: '50%' },
+  { l: '45%', t: '30%', w: '55%', h: '55%' },
+  { l: '15%', t: '50%', w: '45%', h: '45%' },
+];
 
 function Stage({ s, front, children }: { s: number; front?: boolean; children: ReactNode }) {
   return (
@@ -115,8 +147,9 @@ function Stage({ s, front, children }: { s: number; front?: boolean; children: R
   );
 }
 
-export default function DeskScene({ running, onRun, speaking, screen, contributions, pointAt, duckAway }: Props) {
+export default function DeskScene({ running, onRun, speaking, screen, contributions, radio, pointAt, duckAway }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const deckRef = useRef<HTMLDivElement>(null);
   const [s, setS] = useState(0);
   const [now, setNow] = useState<Date | null>(null);
   const [tok, setTok] = useState(40);
@@ -124,7 +157,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const [quack, setQuack] = useState(false);
   const [hoverBar, setHoverBar] = useState<number | null>(null);
   const [voice, setVoice] = useState<string | null>(null);
-  const [clockMode, setClockMode] = useState(0);
+  const [h12, setH12] = useState(false);
   const [hex, setHex] = useState([0, 1, 2, 3, 4]);
   const [litKeys, setLitKeys] = useState<Record<number, boolean>>({});
   const [disco, setDisco] = useState(0);
@@ -132,6 +165,8 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const [deny, setDeny] = useState<number | null>(null);
   const [buddy, setBuddy] = useState<string | null>(null);
   const [buddyOk, setBuddyOk] = useState(true);
+  const [curtains, setCurtains] = useState(false);
+  const [panel, setPanel] = useState(false);
 
   // the duck hops each time the chat points at a folder
   const [hop, setHop] = useState(0);
@@ -161,7 +196,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         });
         anim.current.goToAndStop(0, true);
         setBuddyReady(true);
-        // END TEMP PROBE
       } catch {
         if (!cancelled) setBuddyOk(false);
       }
@@ -175,7 +209,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
 
   // timers, with tokens so overlapping clicks don't cut each other short
   const timers = useRef<number[]>([]);
-  const tokens = useRef({ voice: 0, disco: 0, fact: 0, deny: 0, quack: 0, buddy: 0, buddyStop: 0 });
+  const tokens = useRef({ voice: 0, disco: 0, fact: 0, deny: 0, quack: 0, buddy: 0, buddyStop: 0, curtain: 0 });
   const counts = useRef({ deny: 0, buddy: 0 });
   const keyTok = useRef<Record<number, number>>({});
   const later = (key: keyof typeof tokens.current, fn: () => void, ms: number) => {
@@ -213,13 +247,26 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
     return () => clearInterval(id);
   }, [running]);
 
-  const pune = now ? puneParts(now) : null;
-  const shown = clockMode === 1 && now ? { h: now.getHours(), m: now.getMinutes() } : pune;
-  const clockSub = clockMode === 0 ? 'pune · ist' : clockMode === 1 ? 'your time' : pune ? status(pune.h) : '';
+  // curtains open once the intro is done (or right away if there was no intro)
+  useEffect(() => {
+    const open = () => later('curtain', () => setCurtains(true), 500);
+    const intro = document.querySelector<HTMLElement>('[data-intro]');
+    if (!intro || intro.getClientRects().length === 0) open();
+    window.addEventListener('sameen:intro-done', open);
+    return () => window.removeEventListener('sameen:intro-done', open);
+  }, []);
 
-  // the waveform only reacts to the chat and to its own click
-  const talking = speaking || voice !== null;
-  const caption = voice ?? (speaking ? 'speaking' : hoverBar !== null ? 'tuning…' : 'idle');
+  const phase = now ? phaseOf(now.getHours()) : 'afternoon';
+  const P = PHASES[phase];
+  const night = phase === 'night';
+  const body = skyBody(now);
+
+  const hh = now ? (h12 ? ((now.getHours() + 11) % 12) + 1 : now.getHours()) : null;
+  const clockSub = h12 && now ? `your time · ${now.getHours() < 12 ? 'am' : 'pm'}` : 'your time';
+
+  // the waveform reacts to the chat, its own click and the turntable
+  const talking = speaking || voice !== null || radio.playing;
+  const caption = voice ?? (radio.playing ? 'turntable · playing' : speaking ? 'speaking' : hoverBar !== null ? 'tuning…' : 'idle');
 
   const barStyle = (b: (typeof BARS)[number], i: number): CSSProperties => {
     const base = { background: b.c, '--d': b.d, '--h': b.h } as CSSProperties;
@@ -284,11 +331,37 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   };
 
   return (
-    <div
-      ref={ref}
-      className="relative h-full w-full overflow-hidden bg-wall transition-opacity duration-500"
-      style={{ opacity: s ? 1 : 0, backgroundImage: FOAM }}
-    >
+    <div ref={ref} className="relative h-full w-full overflow-hidden transition-opacity duration-500" style={{ opacity: s ? 1 : 0 }}>
+      {/* day: aura gradient that shifts color through the day */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ background: P.base, transition: 'background 1.4s' }} aria-hidden="true">
+        {AURA_SPOTS.map((a, i) => (
+          <span
+            key={i}
+            className="absolute rounded-full blur-[70px]"
+            style={{ left: a.l, top: a.t, width: a.w, height: a.h, background: P.aura[i], transition: 'background 1.4s' }}
+          />
+        ))}
+      </div>
+
+      {/* night: galaxy */}
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden bg-[#1B1838]"
+        style={{ opacity: night ? 1 : 0, transition: 'opacity 1.2s' }}
+        aria-hidden="true"
+      >
+        <span className="absolute left-[8%] top-[6%] h-[30%] w-[38%] rounded-full bg-[#7F77DD]/[.35] blur-[40px]" />
+        <span className="absolute left-[44%] top-[42%] h-[26%] w-[44%] rounded-full bg-[#ED93B1]/[.2] blur-[40px]" />
+        <span className="absolute left-[62%] top-[4%] h-[24%] w-[30%] rounded-full bg-[#5DCAA5]/[.18] blur-[40px]" />
+        {STARS.map((st, i) => (
+          <span
+            key={i}
+            className="twinkle absolute rounded-full bg-white"
+            style={{ left: `${st.l}%`, top: `${st.t}%`, width: st.s, height: st.s, animationDuration: `${st.d}s`, animationDelay: `${st.delay}s` }}
+          />
+        ))}
+        {night && <span className="shooting absolute right-[14%] top-[8%] h-[1.5px] w-[90px] rounded bg-white" />}
+      </div>
+
       <div className="absolute inset-x-0 bottom-0 border-t-[1.5px] border-ink bg-[#F3E1C7]" style={{ height: PANEL_H * s }} />
       <div className="absolute inset-x-0 border-y-[1.5px] border-ink bg-peach" style={{ bottom: PANEL_H * s, height: 22 * s }} />
 
@@ -297,7 +370,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         {/* github heatmap */}
         <a href={SITE.github} target="_blank" rel="noopener" aria-label="My GitHub profile" className="hang heat group" style={box(36, 22, 250, 142)}>
           <svg style={box(0, 0, 250, 40)} aria-hidden="true">
-            <path d="M125 6 L22 38 M125 6 L228 38" stroke={INK} strokeWidth="1.2" fill="none" />
+            <path d="M125 6 L22 38 M125 6 L228 38" stroke={night ? '#AFA9EC' : INK} strokeWidth="1.2" fill="none" />
             <circle cx="125" cy="6" r="4" fill="#FCFBFF" stroke={INK} strokeWidth="1.5" />
           </svg>
           <span className="absolute left-0 top-[34px] block w-[250px] rounded-md border-[3px] border-win bg-[#26215C] px-2.5 py-2 outline outline-[1.5px] outline-ink">
@@ -319,8 +392,8 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         {/* voice waveform */}
         <div style={box(430, 0, 330, 160)}>
           <svg style={box(0, 0, 330, 52)} aria-hidden="true">
-            <line x1="50" y1="0" x2="50" y2="52" stroke={INK} strokeWidth="1.3" />
-            <line x1="280" y1="0" x2="280" y2="52" stroke={INK} strokeWidth="1.3" />
+            <line x1="50" y1="0" x2="50" y2="52" stroke={night ? '#AFA9EC' : INK} strokeWidth="1.3" />
+            <line x1="280" y1="0" x2="280" y2="52" stroke={night ? '#AFA9EC' : INK} strokeWidth="1.3" />
           </svg>
           <div
             role="button"
@@ -341,22 +414,16 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
               <i key={i} className="bar flex-1 rounded-t-[3px]" style={barStyle(b, i)} />
             ))}
           </div>
-          <span className="absolute left-[44px] top-[136px] font-mono text-[13px] text-sub">voice_agent · {caption}</span>
+          <span className={`absolute left-[44px] top-[136px] font-mono text-[13px] ${night ? 'text-[#CECBF6]' : 'text-sub'}`}>voice_agent · {caption}</span>
         </div>
 
-        {/* led clock */}
-        <button
-          type="button"
-          onClick={() => setClockMode((c) => (c + 1) % 3)}
-          aria-label="Clock, click to change what it shows"
-          className="group"
-          style={box(820, 46, 170, 72)}
-        >
+        {/* led clock: the visitor's own time, click for 12h / 24h */}
+        <button type="button" onClick={() => setH12((v) => !v)} aria-label="Clock, click to switch between 12 and 24 hours" className="group" style={box(820, 46, 170, 72)}>
           <span className="absolute inset-0 flex flex-col items-center justify-center rounded-xl border-[1.5px] border-ink bg-[#26215C]">
-            <span key={clockMode} className="rise font-mono text-[30px] font-medium leading-none tracking-[3px] text-[#9FE1CB]">
-              {shown ? pad(shown.h) : '--'}
+            <span key={String(h12)} className="rise font-mono text-[30px] font-medium leading-none tracking-[3px] text-[#9FE1CB]">
+              {hh !== null ? pad(hh) : '--'}
               <span className="colon">:</span>
-              {shown ? pad(shown.m) : '--'}
+              {now ? pad(now.getMinutes()) : '--'}
             </span>
             <span className="mt-1 font-mono text-[13px] text-[#AFA9EC]">{clockSub}</span>
           </span>
@@ -377,6 +444,55 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
             ))}
           </g>
         </svg>
+
+        {/* window beside the pc: the sun moves left to right through the day, the moon at night */}
+        <div style={box(996, 140, 168, 190)}>
+          <span className="absolute -left-3 -right-3 -top-2 h-1.5 rounded bg-ink" />
+          <button
+            type="button"
+            onClick={() => setCurtains((c) => !c)}
+            aria-label={curtains ? 'Close the curtains' : 'Open the curtains'}
+            className="pointer-events-auto absolute inset-x-0 top-0 h-[172px] overflow-hidden rounded-md border-[4px] border-win outline outline-[1.5px] outline-ink"
+            style={{ background: P.sky, transition: 'background 1.4s' }}
+          >
+            <span className="absolute inset-0" style={{ opacity: P.stars, transition: 'opacity 1s' }}>
+              {WINDOW_STARS.map(([x, y], i) => (
+                <span key={i} className="twinkle absolute size-[3px] rounded-full bg-white" style={{ left: x, top: y, animationDelay: `${i * 0.3}s` }} />
+              ))}
+            </span>
+            <span
+              className="absolute size-7 rounded-full border-[1.5px] border-ink"
+              style={{
+                left: 6 + body.x * 120,
+                top: 10 + body.y * 102,
+                background: body.moon ? '#FCFBFF' : '#FAC775',
+                transition: 'left 1.4s, top 1.4s, background 1.4s',
+              }}
+            />
+            <span className="absolute inset-x-0 bottom-0 h-6 border-t-[1.5px] border-ink" style={{ background: P.horizon, transition: 'background 1.4s' }} />
+            <span className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-win" />
+          </button>
+          {/* curtains */}
+          <span
+            className={`${line} pointer-events-none absolute -left-1.5 top-[-4px] h-[182px] w-[54%] rounded-[2px_2px_10px_4px] bg-[#F4C0D1]`}
+            style={{
+              transformOrigin: 'left',
+              translate: curtains ? '-62% 0' : '0 0',
+              scale: curtains ? '0.55 1' : '1 1',
+              transition: 'translate 1.1s cubic-bezier(.65,0,.35,1), scale 1.1s cubic-bezier(.65,0,.35,1)',
+            }}
+          />
+          <span
+            className={`${line} pointer-events-none absolute -right-1.5 top-[-4px] h-[182px] w-[54%] rounded-[2px_2px_4px_10px] bg-[#F4C0D1]`}
+            style={{
+              transformOrigin: 'right',
+              translate: curtains ? '62% 0' : '0 0',
+              scale: curtains ? '0.55 1' : '1 1',
+              transition: 'translate 1.1s cubic-bezier(.65,0,.35,1), scale 1.1s cubic-bezier(.65,0,.35,1)',
+            }}
+          />
+          <span className={`${line} absolute -left-2 -right-2 top-[176px] h-2 bg-peach`} />
+        </div>
 
         {/* lab buddy: the lottie stays still until you click it, then waves with a speech bubble.
             real art bbox (from the svg, probed in-browser): x 3.5-418, y 21-474 of a 512 frame.
@@ -492,6 +608,9 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         </button>
       </Stage>
 
+      {/* time-of-day light */}
+      <div className="pointer-events-none absolute inset-0" style={{ background: P.tint, transition: 'background 1.4s' }} />
+
       {/* running a model dims the room; disco dims it a little */}
       <div
         className="pointer-events-none absolute inset-0 bg-[rgb(20_16_44/0.5)] transition-opacity duration-500"
@@ -511,10 +630,10 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         </div>
       )}
 
-      {/* front: glow, the PC, the duck and the AI box */}
+      {/* front: glow, the PC, the duck, the AI box and the turntable */}
       <Stage s={s} front>
         <svg style={box(36, 232, 250, 196)} viewBox="0 0 140 110" aria-hidden="true">
-          <g style={{ opacity: running || disco ? 0.55 : 0, transition: 'opacity 0.5s' }}>
+          <g style={{ opacity: night || running || disco ? 0.55 : 0, transition: 'opacity 0.5s' }}>
             {HEX_GLOW.map(([cx, cy, r], i) => (
               <circle key={i} cx={cx} cy={cy} r={r} fill={HEX_COLORS[hex[i] % HEX_COLORS.length]} />
             ))}
@@ -558,20 +677,21 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           </button>
         </div>
 
+        {/* mini AI box */}
         <button
           type="button"
           onClick={onRun}
           aria-pressed={running}
           aria-label={running ? 'Stop the model' : 'Run a model on my AI box'}
           className="group pointer-events-auto"
-          style={box(990, 512, 170, 128)}
+          style={box(990, 512, 122, 128)}
         >
           <span className={`${line} absolute inset-0 overflow-hidden rounded-[16px_16px_10px_10px] bg-peach`}>
-            <span className="absolute inset-x-3 top-3 flex h-9 items-center gap-2 rounded-md bg-ink px-3">
+            <span className="absolute inset-x-2.5 top-2.5 flex h-9 items-center gap-2 rounded-md bg-ink px-2.5">
               <span className="blink size-2 rounded-full bg-[#5DCAA5]" />
-              <span className="font-mono text-[13px] text-[#9FE1CB]">{running ? `running · ${tok} tok/s` : 'idle'}</span>
+              <span className="font-mono text-[13px] text-[#9FE1CB]">{running ? `${tok} tok/s` : 'idle'}</span>
             </span>
-            <span className="absolute inset-x-3 top-[60px] flex flex-col gap-1.5">
+            <span className="absolute inset-x-2.5 top-[60px] flex flex-col gap-1.5">
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
@@ -580,11 +700,18 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
                 />
               ))}
             </span>
-            <span className="absolute bottom-2 left-3 font-mono text-[13px] text-[#633806]">ai·box 01</span>
+            <span className="absolute bottom-2 left-2.5 font-mono text-[13px] text-[#633806]">ai·box 01</span>
           </span>
-          <span className={`${tip} -top-8 right-0`}>{running ? 'click to stop' : 'my mini AI box · click to run a model'}</span>
+          <span className={`${tip} -top-8 left-0`}>{running ? 'click to stop' : 'my mini AI box · click to run a model'}</span>
         </button>
+
+        {/* turntable, right of the AI box */}
+        <div ref={deckRef} className="pointer-events-auto" style={box(1118, 530, 160, 110)}>
+          <TurntableDeck radio={radio} onOpen={() => setPanel(true)} />
+        </div>
       </Stage>
+
+      {panel && <RadioPanel radio={radio} anchor={deckRef} onClose={() => setPanel(false)} />}
     </div>
   );
 }

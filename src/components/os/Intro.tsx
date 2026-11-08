@@ -132,7 +132,10 @@ export default function Intro({ onDone }: { onDone: () => void }) {
         backgroundColor: '#FCFBFF',
       });
     }
-    setTimeout(onDone, 750);
+    setTimeout(() => {
+      onDone();
+      window.dispatchEvent(new Event('sameen:intro-done')); // opens the curtains
+    }, 750);
   }, [onDone]);
 
   // the script

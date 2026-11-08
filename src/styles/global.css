@@ -356,3 +356,19 @@
 @media (prefers-reduced-motion: reduce) {
   .duck-fly { animation: none; }
 }
+
+/* night sky */
+@keyframes twinkle { 50% { opacity: 0.2; } }
+.twinkle { animation: twinkle 3s ease-in-out infinite; }
+
+@keyframes shooting {
+  0% { opacity: 0; translate: 0 0; }
+  4% { opacity: 1; }
+  12%, 100% { opacity: 0; translate: -320px 140px; }
+}
+.shooting { rotate: -24deg; opacity: 0; animation: shooting 6s ease-in 2s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .twinkle { animation: none; }
+  .shooting { display: none; }
+}
