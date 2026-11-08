@@ -334,3 +334,13 @@
 @media (prefers-reduced-motion: reduce) {
   .kbd.disco .key, .spot { animation: none; }
 }
+
+/* duck guide: little hops while flying */
+@keyframes duck-fly {
+  50% { translate: 0 -6px; rotate: -6deg; }
+}
+.duck-fly { animation: duck-fly 0.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .duck-fly { animation: none; }
+}

@@ -13,6 +13,7 @@ type Props = {
   hint: string;
   onOpenFolder: (folder: FolderKey, item?: string) => void;
   tourItems: Record<FolderKey, { label: string; slug?: string }[]>;
+  onStartTour?: () => void;
 };
 
 type Msg = { id: number; from: 'bot' | 'me'; content?: ReactNode; typing?: boolean; wide?: boolean };
@@ -97,7 +98,7 @@ function TourCard({
   );
 }
 
-export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onSpeaking, onOpenFolder, tourItems, hint }: Props) {
+export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onSpeaking, onOpenFolder, tourItems, onStartTour, hint }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chipsOn, setChipsOn] = useState(false);
   const [used, setUsed] = useState<string[]>([]);
@@ -184,13 +185,20 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onS
   }, []);
 
   const ANSWERS: Record<string, () => void> = {
-    'give me a tour': () =>
-      bot(
-        <TourCard items={tourItems} onOpen={onOpenFolder} onStep={(id) => (id ? point(id) : onHighlight(null))} />,
-        undefined,
-        400,
-        true,
-      ),
+    'give me a tour': () => {
+      if (onStartTour) {
+        // laptops: the duck leads the tour
+        bot('follow the duck →', () => onStartTour());
+      } else {
+        // phones: no room, so use the tour card
+        bot(
+          <TourCard items={tourItems} onOpen={onOpenFolder} onStep={(id) => (id ? point(id) : onHighlight(null))} />,
+          undefined,
+          400,
+          true,
+        );
+      }
+    },
     "i'm a recruiter": () =>
       bot(
         <>

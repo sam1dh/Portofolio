@@ -19,6 +19,7 @@ type Props = {
   screen: ReactNode;
   contributions: Contributions;
   pointAt?: string | null;
+  duckAway?: boolean;
 };
 
 const box = (left: number, top: number, width: number, height: number, extra: CSSProperties = {}): CSSProperties => ({
@@ -115,7 +116,7 @@ function Stage({ s, front, children }: { s: number; front?: boolean; children: R
   );
 }
 
-export default function DeskScene({ running, onRun, speaking, screen, contributions, pointAt }: Props) {
+export default function DeskScene({ running, onRun, speaking, screen, contributions, pointAt, duckAway }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [s, setS] = useState(0);
   const [now, setNow] = useState<Date | null>(null);
@@ -576,7 +577,14 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
           <div className="mx-auto h-14 w-14 border-x-[1.5px] border-ink bg-win" />
           <div className={`${line} mx-auto h-5 w-[200px] rounded-t-md bg-win`} />
 
-          <button type="button" onClick={ducky} aria-label="Rubber duck" className="absolute -top-[42px] right-10" style={{ width: 52, height: 44 }}>
+          <button
+            type="button"
+            data-duck
+            onClick={ducky}
+            aria-label="Rubber duck"
+            className="absolute -top-[42px] right-10"
+            style={{ width: 52, height: 44, visibility: duckAway ? 'hidden' : 'visible' }}
+          >
             <svg key={hop} className={`wobble ${hop ? 'duck-hop' : ''}`} width="52" height="44" viewBox="0 0 30 26" aria-hidden="true">
               <ellipse cx="14" cy="18" rx="12" ry="7" fill="#FAC775" stroke={INK} strokeWidth="1.3" />
               <circle cx="20" cy="9" r="6" fill="#FAC775" stroke={INK} strokeWidth="1.3" />

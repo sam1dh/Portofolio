@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import MenuBar from './MenuBar';
 import Window from './Window';
+import DuckTour from './DuckTour';
 import FolderIcon from './FolderIcon';
 import Dock from './Dock';
 import Intro from './Intro';
@@ -113,6 +114,7 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
     resume: { open: false, z: 0, nudge: 0 },
   });
   const [lit, setLit] = useState<FolderId | null>(null);
+  const [touring, setTouring] = useState(false);
   const [wiggles, setWiggles] = useState<Record<FolderId, number>>({ projects: 0, internships: 0, hobbies: 0, resume: 0 });
   const wiggle = useCallback((id: FolderId) => setWiggles((w) => ({ ...w, [id]: w[id] + 1 })), [])
 
@@ -273,6 +275,7 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
         hint={compact ? 'above ↑' : 'on the right →'}
         onOpenFolder={(f, it) => openFolder(f, it)}
         tourItems={tourItems}
+        onStartTour={compact ? undefined : () => setTouring(true)}
       />
     ) : null;
 
@@ -307,6 +310,7 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
           speaking={speaking}
           contributions={contributions}
           pointAt={lit}
+          duckAway={touring}
           screen={compact === false ? screen : null}
         />
         </div>
@@ -321,6 +325,19 @@ export default function Desktop({ folders, contributions, initial = null }: Prop
           <div className="grid grid-cols-4 justify-items-center gap-1 pt-2">{compact === true && icons}</div>
           <div data-screen className="h-[60dvh] overflow-hidden rounded-win border-[1.5px] border-ink bg-win">{compact === true && chat}</div>
         </div>
+
+        {touring && (
+          <DuckTour
+            onPoint={(id) => {
+              setLit(id);
+              if (id) wiggle(id);
+            }}
+            onDone={() => {
+              setTouring(false);
+              setLit(null);
+            }}
+          />
+        )}
 
         {view && (
           <PaperFolder
