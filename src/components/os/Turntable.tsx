@@ -202,6 +202,9 @@ export function RadioPanel({
   const radioRef = useRef(radio);
   radioRef.current = radio;
   const [place, setPlace] = useState<{ right: number; bottom: number } | null>(null);
+  // once you drag the panel somewhere, it stays where you dropped it
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const drag = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
 
   // live progress, read straight from the audio element
   useEffect(() => {
@@ -219,7 +222,7 @@ export function RadioPanel({
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // float above the deck, and close with esc
+  // float above the deck until you drag it away, close with esc
   useEffect(() => {
     if (!anchor) return;
     const put = () => {
@@ -236,6 +239,25 @@ export function RadioPanel({
     };
   }, [anchor, onClose]);
 
+  // drag the dark panel by pressing anywhere that isn't a control
+  const dragDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!floating || drag.current) return;
+    const el = e.target as HTMLElement;
+    if (el.closest('button, a, [role="slider"]')) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    drag.current = { px: e.clientX, py: e.clientY, ox: r.left, oy: r.top };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const dragMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || !floating) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = Math.min(Math.max(8, d.ox + e.clientX - d.px), window.innerWidth - r.width - 8);
+    const y = Math.min(Math.max(8, d.oy + e.clientY - d.py), window.innerHeight - r.height - 8);
+    setPos({ x, y });
+  };
+  const dragUp = () => (drag.current = null);
+
   const t = radio.track;
   const floating = !!anchor;
   const key = 'grid h-9 place-items-center rounded-lg border border-ink bg-[#2C2754] text-[#E2DEFA] transition-colors hover:bg-[#3C3489]';
@@ -244,8 +266,18 @@ export function RadioPanel({
     <div
       role="region"
       aria-label="Lo-fi radio"
-      className={`${floating ? 'fixed z-[940] w-[320px]' : 'w-full'} rise rounded-2xl border-[1.5px] border-ink bg-ink p-4`}
-      style={floating ? (place ?? { visibility: 'hidden' }) : undefined}
+      onPointerDown={dragDown}
+      onPointerMove={dragMove}
+      onPointerUp={dragUp}
+      onPointerCancel={dragUp}
+      className={`${floating ? 'fixed z-[940] w-[320px] cursor-grab touch-none active:cursor-grabbing' : 'w-full'} rise rounded-2xl border-[1.5px] border-ink bg-ink p-4`}
+      style={
+        floating
+          ? pos
+            ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto' }
+            : (place ?? { visibility: 'hidden' })
+          : undefined
+      }
     >
       <div className="mb-3 flex items-center gap-2">
         <span className={`size-2 rounded-full ${radio.playing ? 'blink bg-[#5DCAA5]' : 'bg-[#3C3489]'}`} />
@@ -261,7 +293,7 @@ export function RadioPanel({
 
       <div className="flex items-center gap-3">
         {t?.cover ? (
-          <img src={t.cover} alt="" className="size-14 shrink-0 rounded-lg object-cover" />
+          <img src={t.cover} alt="" draggable={false} className="size-14 shrink-0 rounded-lg object-cover" />
         ) : (
           <span className="size-14 shrink-0 rounded-lg bg-[#2C2754]" />
         )}

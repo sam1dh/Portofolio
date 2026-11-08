@@ -244,10 +244,12 @@ export default function Chat({ onHighlight, onWiggle, onOpenResume, onClose, onS
       </div>
 
       <div className="flex items-center gap-2.5 border-b border-dashed border-[#AFA9EC] px-4 py-2">
-        <span className="relative size-8 shrink-0 rounded-full border border-ink bg-sticky" aria-hidden="true">
-          <span className="absolute left-[8px] top-[11px] h-2 w-1 rounded-full bg-ink" />
-          <span className="absolute right-[8px] top-[11px] h-2 w-1 rounded-full bg-ink" />
-        </span>
+        <img
+          src="/props/teddy.gif"
+          alt=""
+          aria-hidden="true"
+          className="size-8 shrink-0 rounded-full border border-ink bg-sticky object-cover"
+        />
         <span className="leading-tight">
           <span className="text-sm font-medium">sameen</span>
           <br />

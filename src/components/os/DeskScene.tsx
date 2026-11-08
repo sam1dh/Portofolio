@@ -165,7 +165,6 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
   const [deny, setDeny] = useState<number | null>(null);
   const [buddy, setBuddy] = useState<string | null>(null);
   const [buddyOk, setBuddyOk] = useState(true);
-  const [curtains, setCurtains] = useState(false);
   const [panel, setPanel] = useState(false);
 
   // the duck hops each time the chat points at a folder
@@ -209,7 +208,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
 
   // timers, with tokens so overlapping clicks don't cut each other short
   const timers = useRef<number[]>([]);
-  const tokens = useRef({ voice: 0, disco: 0, fact: 0, deny: 0, quack: 0, buddy: 0, buddyStop: 0, curtain: 0 });
+  const tokens = useRef({ voice: 0, disco: 0, fact: 0, deny: 0, quack: 0, buddy: 0, buddyStop: 0 });
   const counts = useRef({ deny: 0, buddy: 0 });
   const keyTok = useRef<Record<number, number>>({});
   const later = (key: keyof typeof tokens.current, fn: () => void, ms: number) => {
@@ -247,14 +246,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
     return () => clearInterval(id);
   }, [running]);
 
-  // curtains open once the intro is done (or right away if there was no intro)
-  useEffect(() => {
-    const open = () => later('curtain', () => setCurtains(true), 500);
-    const intro = document.querySelector<HTMLElement>('[data-intro]');
-    if (!intro || intro.getClientRects().length === 0) open();
-    window.addEventListener('sameen:intro-done', open);
-    return () => window.removeEventListener('sameen:intro-done', open);
-  }, []);
+  // the sky does its own thing; no curtain state anymore
 
   const phase = now ? phaseOf(now.getHours()) : 'afternoon';
   const P = PHASES[phase];
@@ -448,11 +440,9 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
         {/* window beside the pc: the sun moves left to right through the day, the moon at night */}
         <div style={box(996, 140, 168, 190)}>
           <span className="absolute -left-3 -right-3 -top-2 h-1.5 rounded bg-ink" />
-          <button
-            type="button"
-            onClick={() => setCurtains((c) => !c)}
-            aria-label={curtains ? 'Close the curtains' : 'Open the curtains'}
-            className="pointer-events-auto absolute inset-x-0 top-0 h-[172px] overflow-hidden rounded-md border-[4px] border-win outline outline-[1.5px] outline-ink"
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-[172px] overflow-hidden rounded-md border-[4px] border-win outline outline-[1.5px] outline-ink"
             style={{ background: P.sky, transition: 'background 1.4s' }}
           >
             <span className="absolute inset-0" style={{ opacity: P.stars, transition: 'opacity 1s' }}>
@@ -471,26 +461,7 @@ export default function DeskScene({ running, onRun, speaking, screen, contributi
             />
             <span className="absolute inset-x-0 bottom-0 h-6 border-t-[1.5px] border-ink" style={{ background: P.horizon, transition: 'background 1.4s' }} />
             <span className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-win" />
-          </button>
-          {/* curtains */}
-          <span
-            className={`${line} pointer-events-none absolute -left-1.5 top-[-4px] h-[182px] w-[54%] rounded-[2px_2px_10px_4px] bg-[#F4C0D1]`}
-            style={{
-              transformOrigin: 'left',
-              translate: curtains ? '-62% 0' : '0 0',
-              scale: curtains ? '0.55 1' : '1 1',
-              transition: 'translate 1.1s cubic-bezier(.65,0,.35,1), scale 1.1s cubic-bezier(.65,0,.35,1)',
-            }}
-          />
-          <span
-            className={`${line} pointer-events-none absolute -right-1.5 top-[-4px] h-[182px] w-[54%] rounded-[2px_2px_4px_10px] bg-[#F4C0D1]`}
-            style={{
-              transformOrigin: 'right',
-              translate: curtains ? '62% 0' : '0 0',
-              scale: curtains ? '0.55 1' : '1 1',
-              transition: 'translate 1.1s cubic-bezier(.65,0,.35,1), scale 1.1s cubic-bezier(.65,0,.35,1)',
-            }}
-          />
+          </span>
           <span className={`${line} absolute -left-2 -right-2 top-[176px] h-2 bg-peach`} />
         </div>
 
