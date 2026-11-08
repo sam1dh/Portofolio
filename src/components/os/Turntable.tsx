@@ -170,6 +170,9 @@ export function TurntableDeck({ radio, onOpen }: { radio: Radio; onOpen: () => v
           <circle r="10" fill="#FCFBFF" stroke={INK} strokeWidth="1.2" />
           <line x1="0" y1="0" x2="0" y2="-7" stroke={INK} strokeWidth="2" strokeLinecap="round" transform={`rotate(${-135 + (radio.vol / 100) * 270})`} />
         </g>
+        <text x="138" y="108" textAnchor="middle" fill="#633806" fontSize="9" fontFamily="ui-monospace, monospace">
+          vol {radio.vol}
+        </text>
       </svg>
 
       <button
